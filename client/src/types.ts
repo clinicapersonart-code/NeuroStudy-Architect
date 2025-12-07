@@ -10,7 +10,7 @@ export enum InputType {
 export enum StudyMode {
   TURBO = 'TURBO',
   NORMAL = 'NORMAL',
-  SURVIVAL = 'SURVIVAL',
+  ESSENTIAL = 'ESSENTIAL', // Renamed from SURVIVAL
   PARETO = 'PARETO' // Novo modo exclusivo para a Landing Page
 }
 

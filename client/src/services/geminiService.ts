@@ -78,12 +78,12 @@ export const generateStudyGuide = async (
     - Seja extremamente específico em 'noteExactly'.
     - Ideal para quem quer extrair 100% da aula.
     `;
-  } else if (mode === StudyMode.SURVIVAL) {
+  } else if (mode === StudyMode.ESSENTIAL) {
     modeInstructions = `
-    MODO: SOBREVIVÊNCIA (Estudo Rápido com Checkpoints).
+    MODO: ESSENCIAL (Estudo Focado com Checkpoints).
     - Crie POUCOS checkpoints (max 3 ou 4), abrangendo grandes partes do conteúdo.
-    - Foque apenas no essencial.
-    - Resumos curtos.
+    - Foque apenas nos conceitos e pontos cruciais para o entendimento geral.
+    - Resumos curtos e diretos. Ideal para uma revisão rápida ou quando o tempo é curto.
     `;
   } else if (mode === StudyMode.PARETO) {
     modeInstructions = `
@@ -94,6 +94,7 @@ export const generateStudyGuide = async (
     ESTRUTURA OBRIGATÓRIA DO JSON:
     1. 'overview': Aqui você escreverá TODO o conteúdo. 
        - Escreva um texto corrido, bem estruturado, com parágrafos.
+       - Use **negrito** para destacar termos importantes.
        - Explique os conceitos centrais e as relações de causa e efeito.
        - Não faça listas com bullets aqui, faça texto narrativo explicativo.
        - Deve ser completo o suficiente para a pessoa entender o assunto sem ler o original.
@@ -275,7 +276,7 @@ export const generateQuiz = async (
 
   let questionCount = config?.quantity || 6;
   if (!config) {
-    if (mode === StudyMode.SURVIVAL) questionCount = 3;
+    if (mode === StudyMode.ESSENTIAL) questionCount = 3;
     if (mode === StudyMode.TURBO) questionCount = 10;
   }
 
@@ -285,7 +286,7 @@ export const generateQuiz = async (
       REGRAS DE DIFICULDADE (Distribua conforme apropriado):
       - **FÁCIL**: Perguntas de memória direta, definições literais e identificação de conceitos óbvios.
       - **MÉDIO**: Perguntas de compreensão e aplicação simples. Explicar com próprias palavras ou dar exemplos.
-      - **DIFÍCIL**: Perguntas de análise, comparação sofisticada, crítica e integração entre ideias diferentes.
+      - **DIFÍCEL**: Perguntas de análise, comparação sofisticada, crítica e integração entre ideias diferentes.
     `;
 
   const context = {
