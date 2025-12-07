@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
@@ -78,28 +79,29 @@ export const generateStudyGuide = async (
     - Seja extremamente específico em 'noteExactly'.
     - Ideal para quem quer extrair 100% da aula.
     `;
+  } else if (mode === StudyMode.PARETO) {
+    modeInstructions = `
+    MODO: PARETO 80/20 (RESUMO CORRIDO).
+    
+    SUA ÚNICA MISSÃO: Identificar os 20% do conteúdo que entregam 80% do valor e escrever um RESUMO DENSO E CORRIDO.
+    
+    ESTRUTURA OBRIGATÓRIA DO JSON:
+    1. 'overview': Aqui você escreverá TODO o conteúdo essencial. 
+       - Escreva um texto corrido, bem estruturado, com parágrafos.
+       - Explique os conceitos centrais e as relações de causa e efeito.
+       - NÃO use bullets aqui, use prosa explicativa.
+       - Deve ser completo o suficiente para a pessoa entender o assunto sem ler o original.
+    
+    2. 'coreConcepts': DEIXE ESTE ARRAY VAZIO []. Não separe os conceitos, integre-os no texto do overview.
+    
+    3. 'checkpoints': DEIXE ESTE ARRAY VAZIO []. Não crie jornada.
+    `;
   } else if (mode === StudyMode.SURVIVAL) {
     modeInstructions = `
-    MODO: PARETO 80/20 (ESTRITO).
-    
-    Neste modo, você NÃO é um gerador de roteiro, NÃO faz checkpoints.
-    Sua única função é aplicar o princípio 80/20.
-
-    ESTRUTURA DE MAPEAMENTO PARA O JSON (IMPORTANTE):
-    1. O campo 'overview' DEVE conter todo o texto da seção [ESSÊNCIA 20%].
-       - Ideias centrais, princípios organizadores, causa-efeito.
-       - Texto corrido, direto e aplicado.
-    
-    2. O campo 'coreConcepts' DEVE conter os itens da seção [SUPORTE 80%].
-       - Detalhes técnicos, exemplos, exceções, "camada 2".
-       - Mapeie cada ponto de suporte para um objeto { concept: "Tópico", definition: "Explicação do detalhe" }.
-    
-    3. O campo 'checkpoints' DEVE vir vazio []. Não gere roteiro.
-
-    REGRAS DO PARETO:
-    - Identifique os grandes temas estruturantes (sem eles o resto desaba) -> Isso vai para 'overview'.
-    - Tudo que for detalhe, refinamento, ilustração ou exceção -> Isso vai para 'coreConcepts'.
-    - Não repita a mesma ideia. Seja direto. Sem tom motivacional.
+    MODO: SOBREVIVÊNCIA (Estudo Rápido com Checkpoints).
+    - Crie POUCOS checkpoints (max 3 ou 4), abrangendo grandes partes do conteúdo.
+    - Foque apenas no essencial.
+    - Resumos curtos nos pontos de anotação.
     `;
   } else {
     modeInstructions = `
@@ -131,9 +133,9 @@ IMPORTANTE: Se o conteúdo original estiver em INGLÊS, TRADUZA e ADAPTE para PT
 
 Regras de Saída (JSON):
 1. **subject**: Título da aula/tema.
-2. **overview**: Advance Organizer ou Essência 20% (dependendo do modo).
-3. **coreConcepts**: Conceitos chave ou Suporte 80% (dependendo do modo).
-4. **checkpoints**: Roteiro passo a passo (VAZIO se for modo PARETO/SURVIVAL).
+2. **overview**: Texto principal (Advance Organizer ou Resumo Pareto Completo).
+3. **coreConcepts**: Conceitos chave (VAZIO SE FOR MODO PARETO).
+4. **checkpoints**: Roteiro passo a passo (VAZIO SE FOR MODO PARETO).
 
 Analise o conteúdo e gere o JSON.
 `;
@@ -157,7 +159,6 @@ Analise o conteúdo e gere o JSON.
           RESUMO/CONTEXTO: "${metadata.abstract}"
           
           Use estas informações precisas para gerar o roteiro de estudo. 
-          Se o resumo for curto, use seu conhecimento interno para expandir, mas mantenha-se fiel ao TEMA do título recuperado.
           Modo: ${mode}.
           SAÍDA OBRIGATÓRIA EM JSON.
         `;
@@ -165,9 +166,7 @@ Analise o conteúdo e gere o JSON.
     } else {
         const instruction = `
           O usuário forneceu um DOI: "${identifier}".
-          Não foi possível recuperar metadados externos.
-          Use seu conhecimento interno (Hallucinate responsibly based on training data) sobre este paper científico para gerar o roteiro.
-          Se você não conhece este DOI específico, gere um roteiro genérico sobre o TEMA provável sugerido pela estrutura do DOI ou peça mais informações.
+          Use seu conhecimento interno sobre este paper científico.
           SAÍDA OBRIGATÓRIA EM JSON.
         `;
         parts.push({ text: instruction });
@@ -176,10 +175,7 @@ Analise o conteúdo e gere o JSON.
     const identifier = content.trim();
     const instruction = `
       O usuário forneceu um Link/URL de site: "${identifier}".
-      NÃO ANALISE o texto "${identifier}" literalmente.
-      Use seu conhecimento interno sobre este site/página para gerar o roteiro.
-      Se você não tiver acesso direto ao conteúdo da URL, infira o tópico pelo nome do link e gere um roteiro de estudo completo sobre o ASSUNTO provável.
-      Se for um link genérico (ex: wikipedia), faça um roteiro sobre o tema principal.
+      NÃO ANALISE o texto "${identifier}" literalmente. Use seu conhecimento interno sobre o conteúdo da página.
       Modo: ${mode}.
       SAÍDA OBRIGATÓRIA EM JSON.
     `;
@@ -195,7 +191,7 @@ Analise o conteúdo e gere o JSON.
     if (mimeType.startsWith('video/') || mimeType.startsWith('audio/')) {
         transcriptionPrompt = "Analise este vídeo/áudio. Transcreva mentalmente e crie o roteiro.";
     } else if (mimeType.startsWith('image/')) {
-        transcriptionPrompt = "Esta é uma imagem de anotações de estudo (caderno) ou página de livro. Transcreva o texto manuscrito ou impresso e crie o roteiro de estudo baseado nele. Se houver diagramas na imagem, descreva-os no campo drawExactly.";
+        transcriptionPrompt = "Esta é uma imagem de anotações de estudo (caderno) ou página de livro. Transcreva o texto manuscrito ou impresso e crie o roteiro de estudo baseado nele.";
     }
     parts.push({ text: transcriptionPrompt });
   } else {
@@ -291,11 +287,6 @@ export const generateQuiz = async (
       - **FÁCIL**: Perguntas de memória direta, definições literais e identificação de conceitos óbvios.
       - **MÉDIO**: Perguntas de compreensão e aplicação simples. Explicar com próprias palavras ou dar exemplos.
       - **DIFÍCIL**: Perguntas de análise, comparação sofisticada, crítica e integração entre ideias diferentes.
-
-      Distribuição sugerida para o modo ${mode}:
-      ${mode === StudyMode.SURVIVAL ? "Maioria Fáceis e Médias. Foco no essencial." : ""}
-      ${mode === StudyMode.NORMAL ? "Equilibrado: 30% Fácil, 40% Médio, 30% Difícil." : ""}
-      ${mode === StudyMode.TURBO ? "Desafiador: Inclua mais questões Difíceis de análise crítica." : ""}
     `;
 
   const context = {

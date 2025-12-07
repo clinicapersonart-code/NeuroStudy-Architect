@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { StudyGuide } from '../types';
 import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight } from './Icons';
@@ -47,13 +48,13 @@ progress: ${completedCount}/${totalCount}
 
 # ${guide.subject}
 
-## 🧠 ${isParetoOnly ? 'ESSÊNCIA 20%' : 'Advance Organizer'}
+## 🧠 ${isParetoOnly ? 'RESUMO PARETO 80/20' : 'Advance Organizer'}
 ${guide.overview}
 
-## 🎯 ${isParetoOnly ? 'SUPORTE 80%' : 'Conceitos Core (Pareto 80/20)'}
+${!isParetoOnly ? `
+## 🎯 Conceitos Core (Pareto 80/20)
 ${guide.coreConcepts.map(c => `- **${c.concept}**: ${c.definition}`).join('\n')}
 
-${!isParetoOnly ? `
 ## 📍 Jornada de Aprendizagem (Checkpoints)
 
 ${guide.checkpoints.map((cp, i) => `### ${i+1}. ${cp.mission} [${cp.completed ? 'x' : ' '}]
@@ -214,53 +215,55 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
             <div className={`mb-6 p-6 rounded-lg border ${isParetoOnly ? 'bg-red-50 border-red-100' : 'bg-indigo-50 border-indigo-100'} print:bg-gray-50 print:border-gray-300`}>
             <div className={`flex items-center gap-2 mb-2 ${isParetoOnly ? 'text-red-700' : 'text-indigo-700'} font-semibold uppercase tracking-wide text-sm print:text-black`}>
                 <BrainCircuit className="w-5 h-5" />
-                <span>{isParetoOnly ? 'ESSÊNCIA 20% (O Esqueleto)' : 'Advance Organizer (O Mapa)'}</span>
+                <span>{isParetoOnly ? 'ESSÊNCIA PARETO 80/20' : 'Advance Organizer (O Mapa)'}</span>
             </div>
             <div className={`${isParetoOnly ? 'text-red-900 whitespace-pre-wrap' : 'text-indigo-900'} leading-relaxed text-lg font-serif print:text-black`}>
                 {renderMarkdownText(guide.overview)}
             </div>
             </div>
 
-            <div>
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Target className={`w-6 h-6 ${isParetoOnly ? 'text-gray-600' : 'text-red-500'} print:text-black`} />
-                {isParetoOnly ? 'SUPORTE 80% (Detalhes e Aprofundamento)' : 'Conceitos Core (Pareto 80/20)'}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {guide.coreConcepts.map((item, idx) => (
-                <div key={idx} className="relative bg-white border border-gray-200 p-4 rounded-lg shadow-sm print:shadow-none print:border-black break-inside-avoid group">
-                    <span className="block text-xs font-bold text-gray-400 mb-1 print:text-gray-600">{isParetoOnly ? 'CAMADA 2' : `CONCEITO #${idx + 1}`}</span>
-                    <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-gray-900 mb-2">{item.concept}</h4>
-                        <div className="relative no-print">
-                            <button onClick={() => setActiveMagicMenu(activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept' ? null : {idx, type: 'concept'})} className="p-1 text-gray-300 hover:text-indigo-600 transition-colors" title="INSIGHT CEREBRAL"><Brain className="w-4 h-4" /></button>
-                            {activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept' && (
-                                <div className="absolute right-0 top-6 bg-white shadow-xl border border-gray-100 rounded-lg p-1 w-48 z-20 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2">
-                                    <div className="px-3 py-1 text-[10px] font-bold text-indigo-400 uppercase tracking-wider border-b border-gray-100 mb-1">Insight Cerebral</div>
-                                    <button onClick={() => handleMagicAction(item.definition, 'simplify', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">👶 Explicar como p/ 5 anos</button>
-                                    <button onClick={() => handleMagicAction(item.definition, 'example', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">🌍 Dar exemplo real</button>
-                                    <button onClick={() => handleMagicAction(item.definition, 'mnemonic', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">🧠 Criar mnemônico</button>
-                                </div>
-                            )}
+            {!isParetoOnly && (
+                <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Target className="w-6 h-6 text-red-500 print:text-black" />
+                    Conceitos Core (Pareto 80/20)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {guide.coreConcepts.map((item, idx) => (
+                    <div key={idx} className="relative bg-white border border-gray-200 p-4 rounded-lg shadow-sm print:shadow-none print:border-black break-inside-avoid group">
+                        <span className="block text-xs font-bold text-gray-400 mb-1 print:text-gray-600">CONCEITO #{idx + 1}</span>
+                        <div className="flex justify-between items-start">
+                            <h4 className="font-bold text-gray-900 mb-2">{item.concept}</h4>
+                            <div className="relative no-print">
+                                <button onClick={() => setActiveMagicMenu(activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept' ? null : {idx, type: 'concept'})} className="p-1 text-gray-300 hover:text-indigo-600 transition-colors" title="INSIGHT CEREBRAL"><Brain className="w-4 h-4" /></button>
+                                {activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept' && (
+                                    <div className="absolute right-0 top-6 bg-white shadow-xl border border-gray-100 rounded-lg p-1 w-48 z-20 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2">
+                                        <div className="px-3 py-1 text-[10px] font-bold text-indigo-400 uppercase tracking-wider border-b border-gray-100 mb-1">Insight Cerebral</div>
+                                        <button onClick={() => handleMagicAction(item.definition, 'simplify', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">👶 Explicar como p/ 5 anos</button>
+                                        <button onClick={() => handleMagicAction(item.definition, 'example', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">🌍 Dar exemplo real</button>
+                                        <button onClick={() => handleMagicAction(item.definition, 'mnemonic', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">🧠 Criar mnemônico</button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                    <div className={`p-3 rounded text-sm text-gray-800 border-l-4 font-mono print:bg-white print:border-black print:italic ${isParetoOnly ? 'bg-gray-50 border-gray-300' : 'bg-yellow-50 border-yellow-400'}`}>
-                    {isParetoOnly ? '' : 'ANOTAR EXATAMENTE ISSO:'} <br/>
-                    "{item.definition}"
-                    </div>
-                    {magicOutput?.idx === idx && activeMagicMenu?.type === 'concept' && ( 
-                        <div className="mt-2 bg-indigo-50 p-3 rounded text-sm text-indigo-800 border border-indigo-100 animate-fade-in">
-                            <div className="flex justify-between mb-1"><span className="font-bold text-xs uppercase flex items-center gap-1"><Brain className="w-3 h-3"/> Insight Cerebral</span><button onClick={() => setMagicOutput(null)} className="text-xs hover:text-indigo-900"><X className="w-3 h-3"/></button></div>
-                            {renderMarkdownText(magicOutput.text)}
+                        <div className="bg-yellow-50 p-3 rounded text-sm text-gray-800 border-l-4 border-yellow-400 font-mono print:bg-white print:border-black print:italic">
+                        ANOTAR EXATAMENTE ISSO: <br/>
+                        "{item.definition}"
                         </div>
-                    )}
-                    {loadingMagic && activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept' && (
-                        <div className="mt-2 text-xs text-indigo-500 animate-pulse flex items-center gap-1"><span className="animate-spin">🧠</span> Gerando insight...</div>
-                    )}
+                        {magicOutput?.idx === idx && activeMagicMenu?.type === 'concept' && ( 
+                            <div className="mt-2 bg-indigo-50 p-3 rounded text-sm text-indigo-800 border border-indigo-100 animate-fade-in">
+                                <div className="flex justify-between mb-1"><span className="font-bold text-xs uppercase flex items-center gap-1"><Brain className="w-3 h-3"/> Insight Cerebral</span><button onClick={() => setMagicOutput(null)} className="text-xs hover:text-indigo-900"><X className="w-3 h-3"/></button></div>
+                                {renderMarkdownText(magicOutput.text)}
+                            </div>
+                        )}
+                        {loadingMagic && activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept' && (
+                            <div className="mt-2 text-xs text-indigo-500 animate-pulse flex items-center gap-1"><span className="animate-spin">🧠</span> Gerando insight...</div>
+                        )}
+                    </div>
+                    ))}
                 </div>
-                ))}
-            </div>
-            </div>
+                </div>
+            )}
         </div>
 
         {isParetoOnly && onUnlockFullStudy && (
@@ -275,19 +278,13 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
 
         {!isParetoOnly && (
             <div className="relative mt-8">
-                
-                {/* PROGRESS BAR */}
                 <div className="mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm no-print">
                     <div className="flex justify-between text-sm mb-2">
                         <span className="font-bold text-gray-700 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500"/> Progresso da Jornada</span>
                         <span className="text-indigo-600 font-bold">{completedCount}/{totalCount} checkpoints</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-3 border border-gray-100 overflow-hidden">
-                        <div 
-                        className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1"
-                        style={{ width: `${progress}%` }}
-                        >
-                        </div>
+                        <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1" style={{ width: `${progress}%` }}></div>
                     </div>
                 </div>
 
@@ -300,34 +297,15 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                     
                     return (
                     <div key={idx} className="relative md:pl-20 print:pl-0 break-inside-avoid">
-                        {/* Timeline dot - turns green if completed */}
                         <div className={`absolute left-4 top-6 w-8 h-8 border-4 rounded-full hidden md:flex items-center justify-center z-10 print:hidden transition-colors duration-300 ${cp.completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-indigo-500'}`}>
-                            <span className={`text-xs font-bold ${cp.completed ? 'text-white' : 'text-indigo-700'}`}>
-                                {cp.completed ? '✓' : idx + 1}
-                            </span>
+                            <span className={`text-xs font-bold ${cp.completed ? 'text-white' : 'text-indigo-700'}`}>{cp.completed ? '✓' : idx + 1}</span>
                         </div>
 
                         <div className={`rounded-xl paper-shadow overflow-hidden border transition-all duration-300 print:shadow-none print:border-black print:mb-4 ${cp.completed ? 'border-emerald-200 bg-emerald-50/10' : 'bg-white border-gray-100'}`}>
-                            {/* Card Header with Checkbox */}
                             <div className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ${cp.completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-gray-200'} print:bg-gray-100 print:border-black`}>
                                 <div className="flex items-start gap-4">
-                                    <button 
-                                        onClick={() => handleToggleCheckpoint(idx)}
-                                        className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center shrink-0 no-print ${
-                                            cp.completed 
-                                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' 
-                                            : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 text-transparent'
-                                        }`}
-                                        title={cp.completed ? 'Marcar como pendente' : 'Marcar como concluído'}
-                                    >
-                                        <CheckCircle className="w-6 h-6" />
-                                    </button>
-                                    <div>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black ${cp.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                            Checkpoint #{idx + 1}
-                                        </span>
-                                        <h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-emerald-900' : 'text-gray-900'}`}>{cp.mission}</h4>
-                                    </div>
+                                    <button onClick={() => handleToggleCheckpoint(idx)} className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center shrink-0 no-print ${cp.completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 text-transparent'}`} title={cp.completed ? 'Marcar como pendente' : 'Marcar como concluído'}><CheckCircle className="w-6 h-6" /></button>
+                                    <div><span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black ${cp.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>Checkpoint #{idx + 1}</span><h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-emerald-900' : 'text-gray-900'}`}>{cp.mission}</h4></div>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100 print:bg-white print:border print:border-black print:text-black self-start md:self-auto"><span>⏱️ {cp.timestamp}</span></div>
                             </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { InputType, ProcessingState, StudyGuide, StudySession, Folder, StudySource, StudyMode } from './types';
 import { generateStudyGuide, generateSlides, generateQuiz, generateFlashcards } from './services/geminiService';
@@ -228,7 +229,7 @@ export function App() {
           if (file.type.includes('pdf')) type = InputType.PDF;
           else if (file.type.includes('video') || file.type.includes('audio')) type = InputType.VIDEO;
           else if (file.type.includes('image')) type = InputType.IMAGE;
-          handleQuickStart(file, type, StudyMode.SURVIVAL, true);
+          handleQuickStart(file, type, StudyMode.PARETO, true); 
       }
   };
 
@@ -425,7 +426,7 @@ export function App() {
                 <div className="flex items-center gap-2 group">
                     <h2 className="text-xl font-bold text-gray-800 truncate max-w-md" title={activeStudy.title}>{activeStudy.title}</h2>
                     <button onClick={() => { setIsEditingTitle(true); setEditTitleInput(activeStudy.title); }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity" title="Renomear Estudo"><Edit className="w-4 h-4"/></button>
-                    {activeStudy.mode === StudyMode.SURVIVAL && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded uppercase border border-red-200">Pareto 80/20</span>}
+                    {activeStudy.mode === StudyMode.SURVIVAL && <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded uppercase border border-green-200">Sobrevivência</span>}
                 </div>
             )}
             
