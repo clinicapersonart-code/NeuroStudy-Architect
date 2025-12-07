@@ -50,7 +50,7 @@ export function App() {
   // Refs for Pareto Upload
   const paretoInputRef = useRef<HTMLInputElement>(null);
 
-  // Derived State (CRITICAL FIX: Derive Pareto state from data, not UI state)
+  // Derived State
   const activeStudy = studies.find(s => s.id === activeStudyId) || null;
   const isParetoStudy = activeStudy?.mode === StudyMode.PARETO;
 
@@ -122,7 +122,6 @@ export function App() {
     setStudies(prev => [...prev, newStudy]);
     setActiveStudyId(newStudy.id);
     
-    // Auto-switch tab based on mode (Fix for Pareto view)
     setActiveTab(mode === StudyMode.PARETO ? 'guide' : 'sources');
     
     setSelectedMode(mode);
@@ -634,20 +633,20 @@ export function App() {
                             </div>
                             <div className={`border p-6 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${activeStudy.mode === StudyMode.SURVIVAL ? 'bg-red-50 border-red-100' : activeStudy.mode === StudyMode.TURBO ? 'bg-purple-50 border-purple-100' : 'bg-indigo-50 border-indigo-100'}`}>
                                 <div>
-                                    <h3 className={`font-bold text-lg ${activeStudy.mode === StudyMode.SURVIVAL ? 'text-red-900' : activeStudy.mode === StudyMode.TURBO ? 'text-purple-900' : 'text-indigo-900'}`}>{activeStudy.mode === StudyMode.SURVIVAL ? 'Modo Pareto 80/20 (Foco Essencial)' : activeStudy.mode === StudyMode.TURBO ? 'Modo Turbo (Detalhe Máximo)' : 'Pronto para transformar?'}</h3>
+                                    <h3 className={`font-bold text-lg ${activeStudy.mode === StudyMode.SURVIVAL ? 'text-red-900' : activeStudy.mode === StudyMode.TURBO ? 'text-purple-900' : 'text-indigo-900'}`}>{activeStudy.mode === StudyMode.SURVIVAL ? 'Modo Sobrevivência (Foco Essencial)' : activeStudy.mode === StudyMode.TURBO ? 'Modo Turbo (Detalhe Máximo)' : 'Pronto para transformar?'}</h3>
                                     <p className={`text-sm ${activeStudy.mode === StudyMode.SURVIVAL ? 'text-red-700' : activeStudy.mode === StudyMode.TURBO ? 'text-purple-700' : 'text-indigo-700'}`}>{activeStudy.mode === StudyMode.SURVIVAL ? 'O NeuroStudy vai ignorar o ruído e extrair apenas os 20% do conteúdo que geram 80% do resultado.' : activeStudy.mode === StudyMode.TURBO ? 'Análise granular e detalhada para quem não pode perder nenhuma informação.' : 'O NeuroStudy vai analisar suas fontes e criar o roteiro perfeito.'}</p>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
                                         <span className="text-xs font-bold text-gray-500 uppercase">Modo:</span>
                                         <div className="flex gap-1">
-                                            <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.SURVIVAL)} className={`p-1.5 rounded transition-colors ${activeStudy.mode === StudyMode.SURVIVAL ? 'bg-red-100 text-red-700 ring-2 ring-red-500 ring-offset-1' : 'hover:bg-gray-100 text-gray-400'}`} title="Pareto 80/20 (Essencial)"><Target className="w-4 h-4"/></button>
+                                            <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.SURVIVAL)} className={`p-1.5 rounded transition-colors ${activeStudy.mode === StudyMode.SURVIVAL ? 'bg-red-100 text-red-700 ring-2 ring-red-500 ring-offset-1' : 'hover:bg-gray-100 text-gray-400'}`} title="Sobrevivência (Essencial)"><BatteryCharging className="w-4 h-4"/></button>
                                             <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.NORMAL)} className={`p-1.5 rounded transition-colors ${activeStudy.mode === StudyMode.NORMAL ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500 ring-offset-1' : 'hover:bg-gray-100 text-gray-400'}`} title="Normal (Equilibrado)"><Activity className="w-4 h-4"/></button>
                                             <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.TURBO)} className={`p-1.5 rounded transition-colors ${activeStudy.mode === StudyMode.TURBO ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-500 ring-offset-1' : 'hover:bg-gray-100 text-gray-400'}`} title="Turbo (Completo)"><Rocket className="w-4 h-4"/></button>
                                         </div>
                                     </div>
                                     <button onClick={handleGenerateGuide} disabled={activeStudy.sources.length === 0 || processingState.isLoading} className={`px-8 py-3 rounded-xl font-bold text-lg text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-transform active:scale-[0.99] ${activeStudy.mode === StudyMode.SURVIVAL ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : activeStudy.mode === StudyMode.TURBO ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}>
-                                        {processingState.isLoading ? (<><span className="animate-spin text-white">⚙️</span> {processingState.step === 'transcribing' ? 'Transcrevendo...' : processingState.step === 'analyzing' ? 'Lendo...' : processingState.step === 'generating' ? 'Escrevendo...' : 'Processando...'}</>) : (<>{activeStudy.mode === StudyMode.SURVIVAL ? <Target className="w-5 h-5"/> : <BrainCircuit className="w-5 h-5" />} {activeStudy.mode === StudyMode.SURVIVAL ? 'Extrair Pareto 80/20' : 'Gerar Roteiro'}</>)}
+                                        {processingState.isLoading ? (<><span className="animate-spin text-white">⚙️</span> {processingState.step === 'transcribing' ? 'Transcrevendo...' : processingState.step === 'analyzing' ? 'Lendo...' : processingState.step === 'generating' ? 'Escrevendo...' : 'Processando...'}</>) : (<><BrainCircuit className="w-5 h-5" /> Gerar Roteiro</>)}
                                     </button>
                                 </div>
                             </div>
@@ -665,7 +664,6 @@ export function App() {
                                     onGenerateQuiz={() => setActiveTab('quiz')}
                                     onUpdateGuide={(newGuide) => updateStudyGuide(activeStudyId, newGuide)}
                                     isParetoOnly={isParetoStudy}
-                                    onUnlockFullStudy={() => updateStudyMode(activeStudy.id, StudyMode.NORMAL)}
                                 />
                             ) : null
                         ) : (

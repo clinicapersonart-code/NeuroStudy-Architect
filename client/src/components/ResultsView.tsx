@@ -9,10 +9,9 @@ interface ResultsViewProps {
   onGenerateQuiz: () => void;
   onUpdateGuide?: (newGuide: StudyGuide) => void;
   isParetoOnly?: boolean;
-  onUnlockFullStudy?: () => void;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGenerateQuiz, onUpdateGuide, isParetoOnly = false, onUnlockFullStudy }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGenerateQuiz, onUpdateGuide, isParetoOnly = false }) => {
   const [activeMagicMenu, setActiveMagicMenu] = useState<{idx: number, type: 'concept' | 'checkpoint'} | null>(null);
   const [magicOutput, setMagicOutput] = useState<{idx: number, text: string} | null>(null);
   const [loadingMagic, setLoadingMagic] = useState(false);
@@ -195,17 +194,19 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
       
-      {!isParetoOnly && (
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 no-print">
-            <button onClick={onReset} className="text-sm text-gray-500 hover:text-indigo-600 underline font-medium">← Criar novo roteiro</button>
-            <div className="flex gap-2 flex-wrap justify-end">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 no-print">
+        <button onClick={onReset} className="text-sm text-gray-500 hover:text-indigo-600 underline font-medium">
+          ← {isParetoOnly ? 'Analisar outro arquivo' : 'Criar novo roteiro'}
+        </button>
+        <div className="flex gap-2 flex-wrap justify-end">
+          {!isParetoOnly && (
             <button onClick={onGenerateQuiz} className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Gerar Quiz de Revisão"><HelpCircle className="w-4 h-4" /> Gerar Quiz</button>
-            <button onClick={handleDownloadMD} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Baixar Nota para Obsidian (Markdown)"><FileCode className="w-4 h-4" /> Salvar Obsidian</button>
-            <button onClick={handlePrint} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Imprimir (Opção Nativa)"><Printer className="w-4 h-4" /> Imprimir</button>
-            <button onClick={handleDirectDownloadPDF} disabled={isGeneratingPDF} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50" title="Baixar arquivo PDF direto">{isGeneratingPDF ? <span className="animate-spin text-white">⌛</span> : <Download className="w-4 h-4" />} {isGeneratingPDF ? 'Gerando...' : 'Download PDF'}</button>
-            </div>
+          )}
+          <button onClick={handleDownloadMD} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Baixar Nota para Obsidian (Markdown)"><FileCode className="w-4 h-4" /> Salvar Obsidian</button>
+          <button onClick={handlePrint} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Imprimir (Opção Nativa)"><Printer className="w-4 h-4" /> Imprimir</button>
+          <button onClick={handleDirectDownloadPDF} disabled={isGeneratingPDF} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50" title="Baixar arquivo PDF direto">{isGeneratingPDF ? <span className="animate-spin text-white">⌛</span> : <Download className="w-4 h-4" />} {isGeneratingPDF ? 'Gerando...' : 'Download PDF'}</button>
         </div>
-      )}
+      </div>
 
       <div id="printable-guide">
         <div className={`bg-white rounded-xl paper-shadow p-8 border-t-4 ${isParetoOnly ? 'border-red-500' : 'border-indigo-500'} print:shadow-none print:border-0 print:border-t-0 print:mb-6`}>
@@ -221,7 +222,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
             </div>
             </div>
 
-            {/* Concepts and Checkpoints are now HIDDEN in Pareto Mode */}
             {!isParetoOnly && guide.coreConcepts.length > 0 && (
                 <div>
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -265,16 +265,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                 </div>
             )}
         </div>
-
-        {isParetoOnly && onUnlockFullStudy && (
-            <div className="mt-8 bg-white p-8 rounded-xl border-2 border-dashed border-gray-200 text-center animate-fade-in">
-                <h3 className="text-lg font-bold text-gray-800 mb-2">Quer ir além do resumo?</h3>
-                <p className="text-gray-500 mb-6 max-w-lg mx-auto">O NeuroStudy gerou a essência. Para um estudo ativo completo com checkpoints e quiz, clique abaixo.</p>
-                <button onClick={onUnlockFullStudy} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-transform active:scale-95 flex items-center gap-2 mx-auto">
-                    <Layers className="w-5 h-5"/> Desbloquear Estudo Completo <ChevronRight className="w-4 h-4"/>
-                </button>
-            </div>
-        )}
 
         {!isParetoOnly && guide.checkpoints.length > 0 && (
             <div className="relative mt-8">
