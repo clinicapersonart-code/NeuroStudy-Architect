@@ -28,6 +28,8 @@ export interface Checkpoint {
   drawLabel?: 'essential' | 'suggestion' | 'none'; // New: Classify importance of drawing
   question: string;
   imageUrl?: string; // New: Store generated diagram URL
+  completed?: boolean; // New: Track completion status
+  completedAt?: number; // New: Timestamp of completion
 }
 
 export interface StudyGuide {

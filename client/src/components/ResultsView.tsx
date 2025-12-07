@@ -34,12 +34,18 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGene
     textareaRefs.current.forEach(adjustTextareaHeight);
   }, [guide.checkpoints]);
 
+  // Calculate Progress
+  const totalCheckpoints = guide.checkpoints.length;
+  const completedCheckpoints = guide.checkpoints.filter(c => c.completed).length;
+  const progressPercentage = totalCheckpoints > 0 ? Math.round((completedCheckpoints / totalCheckpoints) * 100) : 0;
+
   const generateMarkdown = (guide: StudyGuide) => {
     return `---
 tags: [estudo, neurostudy, ${guide.subject.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}]
 assunto: ${guide.subject}
 data: ${new Date().toLocaleDateString('pt-BR')}
-status: 🟧 Ativo
+status: ${progressPercentage === 100 ? '✅ Concluído' : '🟧 Ativo'}
+progresso: ${progressPercentage}%
 ---
 
 # ${guide.subject}
@@ -53,7 +59,7 @@ ${guide.coreConcepts.map(c => `- **${c.concept}**: ${c.definition}`).join('\n')}
 ${!isParetoOnly ? `
 ## 📍 Jornada de Aprendizagem (Checkpoints)
 
-${guide.checkpoints.map((cp, i) => `### ${i+1}. ${cp.mission}
+${guide.checkpoints.map((cp, i) => `### ${i+1}. ${cp.mission} ${cp.completed ? '(✅ Concluído)' : ''}
 > **Tempo**: ${cp.timestamp}
 
 - 👁️ **Procurar**: ${cp.lookFor}
@@ -117,6 +123,18 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
     if (!onUpdateGuide) return;
     const newCheckpoints = [...guide.checkpoints];
     newCheckpoints[index] = { ...newCheckpoints[index], [field]: value };
+    onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
+  };
+
+  const handleToggleCheckpoint = (index: number) => {
+    if (!onUpdateGuide) return;
+    const newCheckpoints = [...guide.checkpoints];
+    const isComplete = !newCheckpoints[index].completed;
+    newCheckpoints[index] = { 
+        ...newCheckpoints[index], 
+        completed: isComplete,
+        completedAt: isComplete ? Date.now() : undefined
+    };
     onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
   };
 
@@ -251,6 +269,23 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
       <div id="printable-guide">
         {/* Header / Meta */}
         <div className={`bg-white rounded-xl paper-shadow p-8 border-t-4 ${isParetoOnly ? 'border-red-500' : 'border-indigo-500'} print:shadow-none print:border-0 print:border-t-0 print:mb-6`}>
+            
+            {/* PROGRESS BAR (Only in Full Study Mode) */}
+            {!isParetoOnly && totalCheckpoints > 0 && (
+                <div className="mb-6 no-print">
+                    <div className="flex justify-between items-center mb-1 text-xs font-bold uppercase tracking-wider text-gray-500">
+                        <span>Progresso do Estudo</span>
+                        <span className={progressPercentage === 100 ? 'text-green-600' : 'text-indigo-600'}>{progressPercentage}% Concluído</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                            className={`h-full transition-all duration-500 ease-out rounded-full ${progressPercentage === 100 ? 'bg-green-500' : 'bg-indigo-500'}`} 
+                            style={{ width: `${progressPercentage}%` }}
+                        ></div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-between items-start mb-4">
             <h2 className="text-3xl font-serif font-bold text-gray-900">{guide.subject}</h2>
             </div>
@@ -361,18 +396,33 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                     return (
                     <div key={idx} className="relative md:pl-20 print:pl-0 break-inside-avoid">
                     {/* Timeline dot */}
-                    <div className="absolute left-4 top-6 w-8 h-8 bg-white border-4 border-indigo-500 rounded-full hidden md:flex items-center justify-center z-10 print:hidden">
-                        <span className="text-xs font-bold text-indigo-700">{idx + 1}</span>
+                    <div className={`absolute left-4 top-6 w-8 h-8 rounded-full hidden md:flex items-center justify-center z-10 print:hidden border-4 transition-colors duration-500 ${cp.completed ? 'bg-green-500 border-green-200' : 'bg-white border-indigo-500'}`}>
+                        {cp.completed ? (
+                            <CheckCircle className="w-4 h-4 text-white" />
+                        ) : (
+                            <span className="text-xs font-bold text-indigo-700">{idx + 1}</span>
+                        )}
                     </div>
 
-                    <div className="bg-white rounded-xl paper-shadow overflow-hidden border border-gray-100 print:shadow-none print:border-black print:mb-4">
+                    <div className={`rounded-xl paper-shadow overflow-hidden border transition-all duration-300 print:shadow-none print:border-black print:mb-4 ${cp.completed ? 'bg-white border-green-200 ring-1 ring-green-100' : 'bg-white border-gray-100'}`}>
                         {/* Header of Card */}
-                        <div className="bg-slate-50 border-b border-gray-200 p-4 flex flex-col md:flex-row md:items-center justify-between gap-2 print:bg-gray-100 print:border-black">
-                        <div>
-                            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black">
-                            Checkpoint #{idx + 1}
-                            </span>
-                            <h4 className="font-bold text-lg text-gray-900 mt-1">{cp.mission}</h4>
+                        <div className={`border-b p-4 flex flex-col md:flex-row md:items-center justify-between gap-2 print:bg-gray-100 print:border-black transition-colors duration-300 ${cp.completed ? 'bg-green-50 border-green-100' : 'bg-slate-50 border-gray-200'}`}>
+                        <div className="flex items-center gap-3">
+                             {/* Checkbox Toggle */}
+                             <button
+                                onClick={() => handleToggleCheckpoint(idx)}
+                                className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all duration-200 no-print ${cp.completed ? 'bg-green-500 border-green-600 shadow-sm scale-110' : 'bg-white border-gray-300 hover:border-indigo-400'}`}
+                                title={cp.completed ? "Marcar como pendente" : "Marcar como concluído"}
+                             >
+                                 {cp.completed && <CheckCircle className="w-4 h-4 text-white" />}
+                             </button>
+
+                            <div>
+                                <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black transition-colors ${cp.completed ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-700'}`}>
+                                Checkpoint #{idx + 1}
+                                </span>
+                                <h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-green-900 line-through decoration-green-300 decoration-2' : 'text-gray-900'}`}>{cp.mission}</h4>
+                            </div>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded-full print:bg-white print:border print:border-black print:text-black">
                             <span>⏱️ {cp.timestamp}</span>
@@ -380,7 +430,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                         </div>
 
                         {/* Body of Card */}
-                        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className={`p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 transition-opacity duration-300 ${cp.completed ? 'opacity-60 hover:opacity-100' : 'opacity-100'}`}>
                         
                         {/* Left Column: Input */}
                         <div className="space-y-4">
