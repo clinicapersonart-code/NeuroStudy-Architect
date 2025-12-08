@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { InputType, ProcessingState, StudyGuide, StudySession, Folder, StudySource, StudyMode } from './types';
 import { generateStudyGuide, generateSlides, generateQuiz, generateFlashcards } from './services/geminiService';
@@ -88,6 +87,7 @@ export function App() {
 
   const handleGoToHome = () => {
     setView('landing');
+    setIsMobileMenuOpen(false);
   };
 
   const createFolder = (name: string, parentId?: string) => {
