@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // Cast process to any to avoid "Property 'cwd' does not exist on type 'Process'" error
+  // Cast process to any to avoid TS errors with cwd() in some environments
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
@@ -25,11 +25,10 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       emptyOutDir: true,
     },
-    // CRITICAL FIX: This injects the API key into the client-side code
+    // CRITICAL: Inject env vars into client code for production
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      // Ensure process.env is defined to avoid crashes in some libraries
-      'process.env': JSON.stringify(env) 
+      'process.env': JSON.stringify(env)
     }
   };
 });
