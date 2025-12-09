@@ -437,7 +437,7 @@ export const sendChatMessage = async (
   }
 };
 
-export const refineContent = async (text: string, task: 'simplify' | 'example' | 'mnemonic'): Promise<string> => {
+export const refineContent = async (text: string, task: 'simplify' | 'example' | 'mnemonic' | 'joke'): Promise<string> => {
   if (!process.env.API_KEY) throw new Error("API_KEY not found");
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const modelName = 'gemini-2.5-flash';
@@ -446,6 +446,25 @@ export const refineContent = async (text: string, task: 'simplify' | 'example' |
   if (task === 'simplify') prompt = `Explique (ELI5) em PT-BR: "${text}". SEJA BREVE. Máximo 2 frases. Direto ao ponto, sem introduções.`;
   if (task === 'example') prompt = `Dê UM exemplo real curto em PT-BR de: "${text}". Vá direto ao exemplo. Máximo 2 frases.`;
   if (task === 'mnemonic') prompt = `Crie UM Mnemônico criativo em PT-BR para: "${text}". Apenas o mnemônico e a explicação curta.`;
+  
+  if (task === 'joke') {
+      prompt = `
+      CONTEXTO: Insight Cerebral da plataforma NeuroStudy.
+      TEMA: "${text}"
+      
+      TAREFA: Criar uma PIADA curta que ajude a memorizar este conceito.
+      
+      REGRAS:
+      - Relacionada diretamente ao tema.
+      - Deve servir de gancho mental.
+      - Use situações cotidianas (trabalho, estudo, clínica, bar).
+      - Curta (1-3 frases).
+      - Linguagem simples PT-BR.
+      - Sem ofensas.
+      
+      SAÍDA: Apenas a piada. Sem explicações extras.
+      `;
+  }
 
   const response = await ai.models.generateContent({
     model: modelName,

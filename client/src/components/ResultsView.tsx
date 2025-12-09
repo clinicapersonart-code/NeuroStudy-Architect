@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { StudyGuide } from '../types';
-import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight } from './Icons';
+import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight, Smile } from './Icons';
 import { refineContent, generateDiagram } from '../services/geminiService';
 
 interface ResultsViewProps {
@@ -143,7 +144,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
     handleUpdateCheckpoint(index, 'noteExactly', newText);
   };
 
-  const handleMagicAction = async (text: string, task: 'simplify' | 'example' | 'mnemonic', idx: number) => {
+  const handleMagicAction = async (text: string, task: 'simplify' | 'example' | 'mnemonic' | 'joke', idx: number) => {
     setActiveMagicMenu(null);
     setLoadingMagic(true);
     setMagicOutput(null);
@@ -242,6 +243,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                             <button onClick={() => handleMagicAction(item.definition, 'simplify', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">👶 Explicar como p/ 5 anos</button>
                                             <button onClick={() => handleMagicAction(item.definition, 'example', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">🌍 Dar exemplo real</button>
                                             <button onClick={() => handleMagicAction(item.definition, 'mnemonic', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">🧠 Criar mnemônico</button>
+                                            <button onClick={() => handleMagicAction(item.concept, 'joke', idx)} className="text-left px-3 py-2 hover:bg-gray-50 text-sm rounded text-gray-700">🎭 Criar Piada (Memorização)</button>
                                         </div>
                                     )}
                                 </div>
