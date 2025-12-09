@@ -456,7 +456,7 @@ export function App() {
         <header className="px-8 py-6 flex justify-between items-center bg-white border-b border-gray-200">
             <div className="flex items-center gap-2">
                 {/* LOGO DA LANDING PAGE HEADER - REPLACED IMAGE WITH ICON */}
-                <BrainCircuit className="w-8 h-8 text-indigo-600" />
+                <div className="bg-indigo-600 p-1.5 rounded-lg"><BrainCircuit className="w-6 h-6 text-white" /></div>
                 <h1 className="text-xl font-bold text-gray-900">NeuroStudy Architect</h1>
             </div>
             <button onClick={() => setView('app')} className="text-gray-500 hover:text-indigo-600 font-medium text-sm transition-colors">Entrar no Painel →</button>
