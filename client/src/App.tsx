@@ -8,6 +8,7 @@ import { FlashcardsView } from './components/FlashcardsView';
 import { ChatWidget } from './components/ChatWidget';
 import { Sidebar } from './components/Sidebar';
 import { MethodologyModal } from './components/MethodologyModal';
+import { ProcessingStatus } from './components/ProcessingStatus';
 import { NeuroLogo, Brain, BrainCircuit, UploadCloud, FileText, Video, Search, BookOpen, Monitor, HelpCircle, Plus, Trash, Zap, Link, Rocket, BatteryCharging, Activity, GraduationCap, Globe, Edit, CheckCircle, Layers, Camera, Target, ChevronRight, Menu, Lock } from './components/Icons';
 
 export function App() {
@@ -776,8 +777,8 @@ export function App() {
 
                     {(activeTab === 'guide' || isParetoStudy) && (
                         activeStudy.guide || processingState.isLoading ? (
-                            processingState.isLoading && isParetoStudy ? (
-                                <div className="flex flex-col items-center justify-center h-96"><div className="w-16 h-16 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mb-4"></div><h3 className="text-xl font-bold text-gray-700">Extraindo a essência (80/20)...</h3><p className="text-gray-500">Isso pode levar alguns segundos.</p></div>
+                            processingState.isLoading ? (
+                                <ProcessingStatus step={processingState.step} type="guide" />
                             ) : activeStudy.guide ? (
                                 <ResultsView 
                                     guide={activeStudy.guide} 
@@ -800,19 +801,25 @@ export function App() {
 
                     {activeTab === 'slides' && !isParetoStudy && (
                          <div className="animate-fade-in">
-                            {activeStudy.slides ? (<SlidesView slides={activeStudy.slides} />) : (<div className="flex flex-col items-center justify-center py-20 text-center"><Monitor className="w-16 h-16 text-gray-200 mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Slides de Aula</h3><p className="text-gray-500 mb-6 max-w-md">Gere uma apresentação estruturada pronta para usar ou revisar, baseada no seu roteiro.</p><button onClick={handleGenerateSlides} disabled={!activeStudy.guide || processingState.isLoading} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50">{processingState.isLoading ? 'Criando Slides...' : 'Gerar Slides Agora'}</button></div>)}
+                            {processingState.isLoading && processingState.step === 'slides' ? (
+                                <ProcessingStatus step="slides" type="slides" />
+                            ) : activeStudy.slides ? (<SlidesView slides={activeStudy.slides} />) : (<div className="flex flex-col items-center justify-center py-20 text-center"><Monitor className="w-16 h-16 text-gray-200 mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Slides de Aula</h3><p className="text-gray-500 mb-6 max-w-md">Gere uma apresentação estruturada pronta para usar ou revisar, baseada no seu roteiro.</p><button onClick={handleGenerateSlides} disabled={!activeStudy.guide || processingState.isLoading} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50">{processingState.isLoading ? 'Criando Slides...' : 'Gerar Slides Agora'}</button></div>)}
                          </div>
                     )}
 
                     {activeTab === 'quiz' && !isParetoStudy && (
                          <div className="animate-fade-in">
-                            {QuizView && <QuizView questions={activeStudy.quiz || []} onGenerate={handleGenerateQuiz} onClear={handleClearQuiz} />}
+                            {processingState.isLoading && processingState.step === 'quiz' ? (
+                                <ProcessingStatus step="quiz" type="quiz" />
+                            ) : QuizView && <QuizView questions={activeStudy.quiz || []} onGenerate={handleGenerateQuiz} onClear={handleClearQuiz} />}
                          </div>
                     )}
 
                     {activeTab === 'flashcards' && !isParetoStudy && (
                          <div className="animate-fade-in">
-                            {FlashcardsView && <FlashcardsView cards={activeStudy.flashcards || []} onGenerate={handleGenerateFlashcards} />}
+                            {processingState.isLoading && processingState.step === 'flashcards' ? (
+                                <ProcessingStatus step="flashcards" type="flashcards" />
+                            ) : FlashcardsView && <FlashcardsView cards={activeStudy.flashcards || []} onGenerate={handleGenerateFlashcards} />}
                          </div>
                     )}
                 </div>
