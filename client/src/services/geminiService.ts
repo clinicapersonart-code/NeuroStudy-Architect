@@ -1,6 +1,9 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
+// Ensure process is defined for TS
+declare var process: any;
+
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -37,9 +40,8 @@ const RESPONSE_SCHEMA: Schema = {
   required: ["subject", "overview", "coreConcepts", "checkpoints"],
 };
 
-// --- CORREÇÃO: Usando o nome EXATO que está no seu print da Vercel ---
 const getApiKey = (): string | undefined => {
-  return import.meta.env.VITE_GEMINI_API_KEY;
+  return process.env.API_KEY;
 };
 
 // Helper para buscar metadados reais do DOI (para evitar alucinações)
@@ -69,13 +71,11 @@ export const generateStudyGuide = async (
   mode: StudyMode = StudyMode.NORMAL,
   isBinary: boolean = false
 ): Promise<StudyGuide> => {
-  // --- BUSCANDO A CHAVE CORRETA ---
   const apiKey = getApiKey();
   
-  // Se não encontrar, mostra erro no console
   if (!apiKey) {
-    console.error("ERRO: VITE_GEMINI_API_KEY não encontrada.");
-    throw new Error("Chave de API não configurada na Vercel.");
+    console.error("ERRO: API Key não encontrada no process.env");
+    throw new Error("Chave de API não configurada.");
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -185,11 +185,10 @@ export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
 
   const prompt = `Crie 5-8 slides educacionais JSON sobre: ${guide.subject}. Baseado em: ${guide.overview}`;
   
-  // (Schema simplificado para economizar espaço aqui, mas o original funciona)
   const response = await ai.models.generateContent({
     model: modelName,
     contents: { parts: [{ text: prompt }] },
-    config: { responseMimeType: "application/json" } // Schema omitido para brevidade, o modelo infere bem ou use o original
+    config: { responseMimeType: "application/json" } 
   });
   return JSON.parse(response.text || "[]") as Slide[];
 };
@@ -247,5 +246,5 @@ export const refineContent = async (text: string, task: string): Promise<string>
 };
 
 export const generateDiagram = async (desc: string): Promise<string> => {
-  return ""; // Placeholder para evitar erro se não tiver modelo de imagem configurado
+  return ""; // Placeholder
 };

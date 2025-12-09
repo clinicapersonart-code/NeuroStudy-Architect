@@ -10,9 +10,6 @@ import { Sidebar } from './components/Sidebar';
 import { MethodologyModal } from './components/MethodologyModal';
 import { BrainCircuit, UploadCloud, FileText, Video, Search, BookOpen, Monitor, HelpCircle, Plus, Trash, Zap, Link, Rocket, BatteryCharging, Activity, GraduationCap, Globe, Edit, CheckCircle, Layers, Camera, Target, ChevronRight, Menu, Lock } from './components/Icons';
 
-// --- IMPORTANDO O NOVO LOGO ---
-import logoImg from './logobremovebg.png';
-
 export function App() {
   // --- STATE ---
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -458,8 +455,8 @@ export function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
         <header className="px-8 py-6 flex justify-between items-center bg-white border-b border-gray-200">
             <div className="flex items-center gap-2">
-                {/* LOGO DA LANDING PAGE HEADER */}
-                <img src={logoImg} alt="Logo" className="h-10 w-auto object-contain" />
+                {/* LOGO DA LANDING PAGE HEADER - REPLACED IMAGE WITH ICON */}
+                <BrainCircuit className="w-8 h-8 text-indigo-600" />
                 <h1 className="text-xl font-bold text-gray-900">NeuroStudy Architect</h1>
             </div>
             <button onClick={() => setView('app')} className="text-gray-500 hover:text-indigo-600 font-medium text-sm transition-colors">Entrar no Painel →</button>
@@ -470,8 +467,12 @@ export function App() {
                 <div className="space-y-4">
                     <span className="inline-block py-1 px-3 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-widest border border-indigo-100">Neurociência Aplicada</span>
                     
-                    {/* LOGO GRANDE DA LANDING PAGE */}
-                    <img src={logoImg} alt="NeuroStudy Logo" className="h-20 w-auto object-contain mx-auto mb-6 filter drop-shadow-lg" />
+                    {/* LOGO GRANDE DA LANDING PAGE - REPLACED IMAGE WITH ICON */}
+                    <div className="flex justify-center mb-6">
+                        <div className="p-4 bg-indigo-100 rounded-full shadow-lg">
+                            <BrainCircuit className="w-16 h-16 text-indigo-600" />
+                        </div>
+                    </div>
                     
                     <h2 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">Pare de estudar.<br/><span className="text-indigo-600">Comece a aprender.</span></h2>
                     <p className="text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">Transforme PDFs, Vídeos e Anotações em guias de estudo ativo, slides e quizzes automaticamente.</p>
