@@ -89,6 +89,7 @@ export function App() {
   const handleGoToHome = () => {
     setView('landing');
     setIsMobileMenuOpen(false);
+    setActiveStudyId(null); // FIX: Limpa o estudo ativo para sair do layout Pareto
   };
 
   const createFolder = (name: string, parentId?: string) => {
@@ -770,7 +771,13 @@ export function App() {
                             ) : activeStudy.guide ? (
                                 <ResultsView 
                                     guide={activeStudy.guide} 
-                                    onReset={() => { setActiveTab('sources'); if(isParetoStudy) setView('landing'); }}
+                                    onReset={() => { 
+                                        if (isParetoStudy) {
+                                            handleGoToHome();
+                                        } else {
+                                            setActiveTab('sources'); 
+                                        }
+                                    }}
                                     onGenerateQuiz={() => setActiveTab('quiz')}
                                     onUpdateGuide={(newGuide) => activeStudyId && updateStudyGuide(activeStudyId, newGuide)}
                                     isParetoOnly={isParetoStudy}
