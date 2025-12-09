@@ -8,7 +8,7 @@ import { FlashcardsView } from './components/FlashcardsView';
 import { ChatWidget } from './components/ChatWidget';
 import { Sidebar } from './components/Sidebar';
 import { MethodologyModal } from './components/MethodologyModal';
-import { BrainCircuit, UploadCloud, FileText, Video, Search, BookOpen, Monitor, HelpCircle, Plus, Trash, Zap, Link, Rocket, BatteryCharging, Activity, GraduationCap, Globe, Edit, CheckCircle, Layers, Camera, Target, ChevronRight, Menu, Lock } from './components/Icons';
+import { Brain, BrainCircuit, UploadCloud, FileText, Video, Search, BookOpen, Monitor, HelpCircle, Plus, Trash, Zap, Link, Rocket, BatteryCharging, Activity, GraduationCap, Globe, Edit, CheckCircle, Layers, Camera, Target, ChevronRight, Menu, Lock } from './components/Icons';
 
 export function App() {
   // --- STATE ---
@@ -455,9 +455,9 @@ export function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
         <header className="px-8 py-6 flex justify-between items-center bg-white border-b border-gray-200">
             <div className="flex items-center gap-2">
-                {/* NEW LOGO IMPLEMENTATION */}
+                {/* NEW LOGO IMPLEMENTATION WITH BRAIN ICON */}
                 <div className="flex items-center gap-2 bg-indigo-600 pl-2 pr-3 py-1.5 rounded-lg shadow-sm">
-                    <BrainCircuit className="w-6 h-6 text-white" />
+                    <Brain className="w-6 h-6 text-white" />
                     <span className="font-bold text-white tracking-tight">NeuroStudy</span>
                 </div>
             </div>
@@ -469,10 +469,10 @@ export function App() {
                 <div className="space-y-4">
                     <span className="inline-block py-1 px-3 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-widest border border-indigo-100">Neurociência Aplicada</span>
                     
-                    {/* HERO LOGO - REIMPLEMENTED AS SVG COMPONENT */}
+                    {/* HERO LOGO - REIMPLEMENTED AS BRAIN ICON */}
                     <div className="flex justify-center mb-6">
                         <div className="p-6 bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-3xl shadow-xl border-4 border-white">
-                            <BrainCircuit className="w-20 h-20 text-indigo-600" />
+                            <Brain className="w-20 h-20 text-indigo-600" />
                         </div>
                     </div>
                     
