@@ -455,9 +455,11 @@ export function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
         <header className="px-8 py-6 flex justify-between items-center bg-white border-b border-gray-200">
             <div className="flex items-center gap-2">
-                {/* LOGO DA LANDING PAGE HEADER - REPLACED IMAGE WITH ICON */}
-                <div className="bg-indigo-600 p-1.5 rounded-lg"><BrainCircuit className="w-6 h-6 text-white" /></div>
-                <h1 className="text-xl font-bold text-gray-900">NeuroStudy Architect</h1>
+                {/* NEW LOGO IMPLEMENTATION */}
+                <div className="flex items-center gap-2 bg-indigo-600 pl-2 pr-3 py-1.5 rounded-lg shadow-sm">
+                    <BrainCircuit className="w-6 h-6 text-white" />
+                    <span className="font-bold text-white tracking-tight">NeuroStudy</span>
+                </div>
             </div>
             <button onClick={() => setView('app')} className="text-gray-500 hover:text-indigo-600 font-medium text-sm transition-colors">Entrar no Painel →</button>
         </header>
@@ -467,10 +469,10 @@ export function App() {
                 <div className="space-y-4">
                     <span className="inline-block py-1 px-3 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-widest border border-indigo-100">Neurociência Aplicada</span>
                     
-                    {/* LOGO GRANDE DA LANDING PAGE - REPLACED IMAGE WITH ICON */}
+                    {/* HERO LOGO - REIMPLEMENTED AS SVG COMPONENT */}
                     <div className="flex justify-center mb-6">
-                        <div className="p-4 bg-indigo-100 rounded-full shadow-lg">
-                            <BrainCircuit className="w-16 h-16 text-indigo-600" />
+                        <div className="p-6 bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-3xl shadow-xl border-4 border-white">
+                            <BrainCircuit className="w-20 h-20 text-indigo-600" />
                         </div>
                     </div>
                     
