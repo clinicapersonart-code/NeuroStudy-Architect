@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
@@ -38,6 +37,12 @@ const RESPONSE_SCHEMA: Schema = {
   required: ["subject", "overview", "coreConcepts", "checkpoints"],
 };
 
+// --- CORREÇÃO AQUI: Função segura para pegar a chave ---
+const getApiKey = (): string | undefined => {
+  return import.meta.env.VITE_API_KEY;
+};
+
+// Helper para buscar metadados reais do DOI (para evitar alucinações)
 const fetchDoiMetadata = async (doi: string): Promise<{ title: string, abstract: string } | null> => {
   try {
     const cleanDoi = doi.trim().replace(/^doi:/i, '').replace(/^https?:\/\/doi\.org\//i, '');
@@ -64,13 +69,16 @@ export const generateStudyGuide = async (
   mode: StudyMode = StudyMode.NORMAL,
   isBinary: boolean = false
 ): Promise<StudyGuide> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY not found in environment variables.");
+  // --- CORREÇÃO AQUI ---
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("VITE_API_KEY não encontrada. Verifique as configurações da Vercel.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash'; 
 
+  // --- INSTRUÇÕES DO MODO ---
   let modeInstructions = "";
   if (mode === StudyMode.HARD) {
     modeInstructions = `
@@ -110,10 +118,11 @@ export const generateStudyGuide = async (
     modeInstructions = `
     MODO: NORMAL (Equilibrado).
     - Blocos médios, nem muito picotado, nem muito raso.
-    - Organização padrão para rotina de estudos sustentável.
+    - Organização padrão para rotina de estudos.
     `;
   }
 
+  // --- INSTRUÇÕES DE TIPO DE CONTEÚDO ---
   let contentInstructions = "";
   if (isBinary && (mimeType.startsWith('video/') || mimeType.startsWith('audio/'))) {
     contentInstructions = "O conteúdo é um VÍDEO/ÁUDIO. Use 'timestamps' (ex: 00:00-05:00) para dividir os checkpoints.";
@@ -162,6 +171,7 @@ Analise o conteúdo e gere o JSON.
           RESUMO/CONTEXTO: "${metadata.abstract}"
           
           Use estas informações precisas para gerar o roteiro de estudo. 
+          Se o resumo for curto, use seu conhecimento interno para expandir, mas mantenha-se fiel ao TEMA do título recuperado.
           Modo: ${mode}.
           SAÍDA OBRIGATÓRIA EM JSON.
         `;
@@ -169,7 +179,9 @@ Analise o conteúdo e gere o JSON.
     } else {
         const instruction = `
           O usuário forneceu um DOI: "${identifier}".
-          Use seu conhecimento interno sobre este paper científico.
+          Não foi possível recuperar metadados externos.
+          Use seu conhecimento interno (Hallucinate responsibly based on training data) sobre este paper científico para gerar o roteiro.
+          Se você não conhece este DOI específico, gere um roteiro genérico sobre o TEMA provável sugerido pela estrutura do DOI ou peça mais informações.
           SAÍDA OBRIGATÓRIA EM JSON.
         `;
         parts.push({ text: instruction });
@@ -178,7 +190,10 @@ Analise o conteúdo e gere o JSON.
     const identifier = content.trim();
     const instruction = `
       O usuário forneceu um Link/URL de site: "${identifier}".
-      NÃO ANALISE o texto "${identifier}" literalmente. Use seu conhecimento interno sobre o conteúdo da página.
+      NÃO ANALISE o texto "${identifier}" literalmente.
+      Use seu conhecimento interno sobre este site/página para gerar o roteiro.
+      Se você não tiver acesso direto ao conteúdo da URL, infira o tópico pelo nome do link e gere um roteiro de estudo completo sobre o ASSUNTO provável.
+      Se for um link genérico (ex: wikipedia), faça um roteiro sobre o tema principal.
       Modo: ${mode}.
       SAÍDA OBRIGATÓRIA EM JSON.
     `;
@@ -194,7 +209,7 @@ Analise o conteúdo e gere o JSON.
     if (mimeType.startsWith('video/') || mimeType.startsWith('audio/')) {
         transcriptionPrompt = "Analise este vídeo/áudio. Transcreva mentalmente e crie o roteiro.";
     } else if (mimeType.startsWith('image/')) {
-        transcriptionPrompt = "Esta é uma imagem de anotações de estudo (caderno) ou página de livro. Transcreva o texto manuscrito ou impresso e crie o roteiro de estudo baseado nele.";
+        transcriptionPrompt = "Esta é uma imagem de anotações de estudo (caderno) ou página de livro. Transcreva o texto manuscrito ou impresso e crie o roteiro de estudo baseado nele. Se houver diagramas na imagem, descreva-os no campo drawExactly.";
     }
     parts.push({ text: transcriptionPrompt });
   } else {
@@ -213,7 +228,8 @@ Analise o conteúdo e gere o JSON.
       },
     });
 
-    const text = response.text;
+    const rawText = typeof (response as any).text === 'function' ? await (response as any).text() : (response as any).text;
+    const text = rawText || "";
     if (!text) throw new Error("No response from AI");
     
     const guide = JSON.parse(text) as StudyGuide;
@@ -232,9 +248,10 @@ Analise o conteúdo e gere o JSON.
 };
 
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
-  if (!process.env.API_KEY) throw new Error("API_KEY not found");
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key não encontrada");
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
 
   const prompt = `
@@ -264,7 +281,8 @@ export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
     config: { responseMimeType: "application/json", responseSchema: schema },
   });
 
-  return JSON.parse(response.text || "[]") as Slide[];
+  const rawText = typeof (response as any).text === 'function' ? await (response as any).text() : (response as any).text;
+  return JSON.parse(rawText || "[]") as Slide[];
 };
 
 export const generateQuiz = async (
@@ -272,9 +290,10 @@ export const generateQuiz = async (
     mode: StudyMode, 
     config?: { quantity: number, difficulty: 'easy' | 'medium' | 'hard' | 'mixed' }
 ): Promise<QuizQuestion[]> => {
-  if (!process.env.API_KEY) throw new Error("API_KEY not found");
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key não encontrada");
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
 
   let questionCount = config?.quantity || 6;
@@ -289,7 +308,12 @@ export const generateQuiz = async (
       REGRAS DE DIFICULDADE (Distribua conforme apropriado):
       - **FÁCIL**: Perguntas de memória direta, definições literais e identificação de conceitos óbvios.
       - **MÉDIO**: Perguntas de compreensão e aplicação simples. Explicar com próprias palavras ou dar exemplos.
-      - **DIFÍCEL**: Perguntas de análise, comparação sofisticada, crítica e integração entre ideias diferentes.
+      - **DIFÍCIL**: Perguntas de análise, comparação sofisticada, crítica e integração entre ideias diferentes.
+
+      Distribuição sugerida para o modo ${mode}:
+      ${mode === StudyMode.SURVIVAL ? "Maioria Fáceis e Médias. Foco no essencial." : ""}
+      ${mode === StudyMode.NORMAL ? "Equilibrado: 30% Fácil, 40% Médio, 30% Difícil." : ""}
+      ${mode === StudyMode.HARD ? "Desafiador: Inclua mais questões Difíceis de análise crítica." : ""}
     `;
 
   const context = {
@@ -342,13 +366,15 @@ export const generateQuiz = async (
     },
   });
 
-  return JSON.parse(response.text || "[]") as QuizQuestion[];
+  const rawText = typeof (response as any).text === 'function' ? await (response as any).text() : (response as any).text;
+  return JSON.parse(rawText || "[]") as QuizQuestion[];
 };
 
 export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]> => {
-  if (!process.env.API_KEY) throw new Error("API_KEY not found");
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key não encontrada");
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
 
   const context = {
@@ -390,7 +416,8 @@ export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]
     },
   });
 
-  return JSON.parse(response.text || "[]") as Flashcard[];
+  const rawText = typeof (response as any).text === 'function' ? await (response as any).text() : (response as any).text;
+  return JSON.parse(rawText || "[]") as Flashcard[];
 };
 
 export const sendChatMessage = async (
@@ -398,9 +425,10 @@ export const sendChatMessage = async (
   newMessage: string,
   studyGuideContext?: StudyGuide | null
 ): Promise<string> => {
-  if (!process.env.API_KEY) throw new Error("API_KEY not found");
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key não encontrada");
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-3-pro-preview';
 
   let contextString = "";
@@ -438,8 +466,9 @@ export const sendChatMessage = async (
 };
 
 export const refineContent = async (text: string, task: 'simplify' | 'example' | 'mnemonic' | 'joke'): Promise<string> => {
-  if (!process.env.API_KEY) throw new Error("API_KEY not found");
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key não encontrada");
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
 
   let prompt = "";
@@ -470,12 +499,14 @@ export const refineContent = async (text: string, task: 'simplify' | 'example' |
     model: modelName,
     contents: { role: 'user', parts: [{ text: prompt }] },
   });
-  return response.text || "Erro.";
+  const rawText = typeof (response as any).text === 'function' ? await (response as any).text() : (response as any).text;
+  return rawText || "Erro.";
 };
 
 export const generateDiagram = async (description: string): Promise<string> => {
-  if (!process.env.API_KEY) throw new Error("API_KEY not found");
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key não encontrada");
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash-image'; 
 
   const prompt = `Create a clear, educational, white-background diagram visualizing: ${description}. Clean academic style.`;
