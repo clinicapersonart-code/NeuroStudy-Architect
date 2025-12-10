@@ -132,7 +132,7 @@ export const Link = ({ className }: { className?: string }) => (
 );
 
 export const Sparkles = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></svg>
 );
 
 export const Edit = ({ className }: { className?: string }) => (
@@ -218,10 +218,30 @@ export const Smile = ({ className }: { className?: string }) => (
 );
 
 export const Tomato = ({ className }: { className?: string }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M12 3C8 3 5 4.5 5 7C5 8.5 6.5 9.8 8.8 10.5C8.3 11.5 8 12.7 8 14C8 18.4 9.8 22 12 22C14.2 22 16 18.4 16 14C16 12.7 15.7 11.5 15.2 10.5C17.5 9.8 19 8.5 19 7C19 4.5 16 3 12 3Z" fill="currentColor"/>
-    <path d="M12 3V7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-    <path d="M9 4.5C9.5 5.5 10.5 6.5 12 7C13.5 6.5 14.5 5.5 15 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    {/* Red Body */}
+    <circle cx="50" cy="55" r="43" fill="#D50000" stroke="black" strokeWidth="3"/>
+    
+    {/* Green Leaves (Top) */}
+    <path d="M50 52 C35 35 20 25 15 15 C35 25 45 40 50 52" fill="#008000" stroke="black" strokeWidth="2"/>
+    <path d="M50 52 C65 35 80 25 85 15 C65 25 55 40 50 52" fill="#008000" stroke="black" strokeWidth="2"/>
+    <path d="M50 52 C45 35 45 20 50 10 C55 20 55 35 50 52" fill="#008000" stroke="black" strokeWidth="2"/>
+
+    {/* White Arc Line */}
+    <path d="M10 58 Q 50 75 90 58" stroke="white" strokeWidth="2" fill="none"/>
+
+    {/* Tick Marks */}
+    <line x1="18" y1="52" x2="18" y2="60" stroke="black" strokeWidth="2" />
+    <line x1="34" y1="60" x2="34" y2="68" stroke="black" strokeWidth="2" />
+    <line x1="50" y1="62" x2="50" y2="70" stroke="black" strokeWidth="2" />
+    <line x1="66" y1="60" x2="66" y2="68" stroke="black" strokeWidth="2" />
+    <line x1="82" y1="52" x2="82" y2="60" stroke="black" strokeWidth="2" />
+
+    {/* White Triangle Pointer */}
+    <path d="M44 78 L56 78 L50 88 Z" fill="white" stroke="black" strokeWidth="2"/>
+
+    {/* Text "25" */}
+    <text x="50" y="45" textAnchor="middle" fill="white" fontSize="22" fontFamily="Arial, sans-serif" fontWeight="bold" stroke="black" strokeWidth="0.5">25</text>
   </svg>
 );
 

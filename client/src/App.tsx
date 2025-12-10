@@ -829,7 +829,7 @@ export function App() {
       </div>
 
       {!isParetoStudy && <ChatWidget studyGuide={activeStudy?.guide || null} />}
-      {!isParetoStudy && <PomodoroTimer />}
+      {!isParetoStudy && activeStudy?.guide && <PomodoroTimer />}
       {showMethodologyModal && <MethodologyModal onClose={() => setShowMethodologyModal(false)} />}
     </div>
   );

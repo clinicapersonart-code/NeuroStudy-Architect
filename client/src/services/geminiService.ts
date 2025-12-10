@@ -1,6 +1,11 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
+// Função auxiliar para pegar a chave da API corretamente no Vite
+const getApiKey = () => {
+  return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
+};
+
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -64,7 +69,11 @@ export const generateStudyGuide = async (
   mode: StudyMode = StudyMode.NORMAL,
   isBinary: boolean = false
 ): Promise<StudyGuide> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // CORREÇÃO AQUI: Usando a função getApiKey()
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Chave de API não encontrada (VITE_GEMINI_API_KEY)");
+  
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash'; 
 
   // --- INSTRUÇÕES DO MODO ---
@@ -165,7 +174,10 @@ SAÍDA OBRIGATÓRIA: JSON VÁLIDO seguindo o schema.
 };
 
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // CORREÇÃO AQUI
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Chave de API não encontrada");
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
 
   const prompt = `Crie 5-8 slides educacionais JSON sobre: ${guide.subject}. Baseado em: ${guide.overview}. IDIOMA: PORTUGUÊS DO BRASIL.`;
@@ -179,7 +191,10 @@ export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
 };
 
 export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: any): Promise<QuizQuestion[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // CORREÇÃO AQUI
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Chave de API não encontrada");
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
   
   const prompt = `Crie um Quiz JSON com 6 perguntas sobre ${guide.subject}. Misture múltipla escolha e aberta. IDIOMA: PORTUGUÊS DO BRASIL.`;
@@ -193,7 +208,10 @@ export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: 
 };
 
 export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // CORREÇÃO AQUI
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Chave de API não encontrada");
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
   
   const prompt = `Crie 10 Flashcards JSON (front/back) sobre ${guide.subject}. IDIOMA: PORTUGUÊS DO BRASIL.`;
@@ -207,7 +225,10 @@ export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]
 };
 
 export const sendChatMessage = async (history: ChatMessage[], newMessage: string, context?: any): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // CORREÇÃO AQUI
+  const apiKey = getApiKey();
+  if (!apiKey) return "Erro: Chave de API não encontrada.";
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash'; 
   
   const chat = ai.chats.create({ model: modelName, history: history.slice(-5).map(m => ({ role: m.role, parts: [{ text: m.text }] })) });
@@ -216,7 +237,10 @@ export const sendChatMessage = async (history: ChatMessage[], newMessage: string
 };
 
 export const refineContent = async (text: string, task: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // CORREÇÃO AQUI
+  const apiKey = getApiKey();
+  if (!apiKey) return "Erro: Chave de API não encontrada.";
+  const ai = new GoogleGenAI({ apiKey });
   // FORCE PORTUGUESE OUTPUT IN INSTRUCTION
   const instruction = `Task: ${task}. Content to analyze: "${text}".
   CRITICAL INSTRUCTION: OUTPUT MUST BE IN PORTUGUESE (BRAZIL/PT-BR) 🇧🇷.
