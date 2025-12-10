@@ -40,12 +40,6 @@ const RESPONSE_SCHEMA: Schema = {
   required: ["subject", "overview", "coreConcepts", "checkpoints"],
 };
 
-const getApiKey = (): string | undefined => {
-  // Tenta pegar a chave do jeito certo (Vite)
-  // Verifica os dois nomes comuns para garantir que funcione na sua Vercel
-  return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
-};
-
 // Helper para buscar metadados reais do DOI (para evitar alucinações)
 const fetchDoiMetadata = async (doi: string): Promise<{ title: string, abstract: string } | null> => {
   try {
@@ -73,7 +67,7 @@ export const generateStudyGuide = async (
   mode: StudyMode = StudyMode.NORMAL,
   isBinary: boolean = false
 ): Promise<StudyGuide> => {
-  const apiKey = getApiKey();
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
     console.error("ERRO: API Key não encontrada no process.env");
@@ -181,7 +175,7 @@ SAÍDA OBRIGATÓRIA: JSON VÁLIDO seguindo o schema.
 };
 
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
-  const apiKey = getApiKey();
+  const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("Chave API não encontrada");
   const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
@@ -197,7 +191,7 @@ export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
 };
 
 export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: any): Promise<QuizQuestion[]> => {
-  const apiKey = getApiKey();
+  const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("Chave API não encontrada");
   const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
@@ -213,7 +207,7 @@ export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: 
 };
 
 export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]> => {
-  const apiKey = getApiKey();
+  const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("Chave API não encontrada");
   const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash';
@@ -229,7 +223,7 @@ export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]
 };
 
 export const sendChatMessage = async (history: ChatMessage[], newMessage: string, context?: any): Promise<string> => {
-  const apiKey = getApiKey();
+  const apiKey = process.env.API_KEY;
   if (!apiKey) return "Erro de Configuração: API Key não encontrada.";
   
   const ai = new GoogleGenAI({ apiKey });
@@ -241,7 +235,7 @@ export const sendChatMessage = async (history: ChatMessage[], newMessage: string
 };
 
 export const refineContent = async (text: string, task: string): Promise<string> => {
-  const apiKey = getApiKey();
+  const apiKey = process.env.API_KEY;
   if (!apiKey) return "Erro.";
   const ai = new GoogleGenAI({ apiKey });
   // FORCE PORTUGUESE OUTPUT IN INSTRUCTION

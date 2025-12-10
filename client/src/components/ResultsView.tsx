@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StudyGuide } from '../types';
-import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight, Smile } from './Icons';
+import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight, Smile, Sparkles, Globe } from './Icons';
 import { refineContent, generateDiagram } from '../services/geminiService';
 
 interface ResultsViewProps {
@@ -145,17 +145,26 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
   };
 
   const handleMagicAction = async (text: string, task: 'simplify' | 'example' | 'mnemonic' | 'joke', idx: number) => {
-    setActiveMagicMenu(null);
+    // Keep the menu logic to show loading state in place
+    // We do NOT set activeMagicMenu to null immediately, we keep it to show the loading spinner inside the container
     setLoadingMagic(true);
     setMagicOutput(null);
     try {
       const result = await refineContent(text, task);
       setMagicOutput({ idx, text: result });
+      // We keep the menu 'active' so the result box stays visible, but we will hide the buttons in the render
     } catch (e) {
       console.error(e);
+      setLoadingMagic(false);
     } finally {
       setLoadingMagic(false);
     }
+  };
+
+  const handleCloseMagic = () => {
+      setActiveMagicMenu(null);
+      setMagicOutput(null);
+      setLoadingMagic(false);
   };
 
   const handleGenerateImage = async (checkpointIndex: number, description: string) => {
@@ -229,40 +238,68 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                         <Target className="w-6 h-6 text-red-500 print:text-black" />
                         Conceitos Core (Pareto 80/20)
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {guide.coreConcepts.map((item, idx) => {
-                            const isMenuOpen = activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept';
+                            const isActive = activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept';
+                            const hasResult = magicOutput?.idx === idx;
+                            
                             return (
-                                <div key={idx} className={`relative bg-white border border-gray-200 p-4 rounded-lg shadow-sm print:shadow-none print:border-black break-inside-avoid group transition-all duration-200 ${isMenuOpen ? 'z-40 ring-2 ring-indigo-100' : 'z-0'}`}>
+                                <div key={idx} className={`relative bg-white border border-gray-200 p-5 rounded-xl shadow-sm print:shadow-none print:border-black break-inside-avoid transition-all duration-300 ${isActive ? 'ring-2 ring-indigo-200' : ''}`}>
                                     <span className="block text-xs font-bold text-gray-400 mb-1 print:text-gray-600">CONCEITO #{idx + 1}</span>
-                                    <div className="flex justify-between items-start">
-                                        <h4 className="font-bold text-gray-900 mb-2">{item.concept}</h4>
-                                        <div className="relative no-print">
-                                            <button onClick={() => setActiveMagicMenu(isMenuOpen ? null : {idx, type: 'concept'})} className={`p-1 transition-colors ${isMenuOpen ? 'text-indigo-600 bg-indigo-50 rounded' : 'text-gray-300 hover:text-indigo-600'}`} title="INSIGHT CEREBRAL"><Brain className="w-4 h-4" /></button>
-                                            {isMenuOpen && (
-                                                <div className="absolute right-0 top-8 bg-white shadow-2xl border border-gray-200 rounded-xl p-1.5 w-56 z-50 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 origin-top-right">
-                                                    <div className="px-3 py-2 text-[10px] font-bold text-indigo-500 uppercase tracking-wider border-b border-gray-100 mb-1 flex items-center gap-1"><Brain className="w-3 h-3"/> Ferramentas Cognitivas</div>
-                                                    <button onClick={() => handleMagicAction(item.definition, 'simplify', idx)} className="text-left px-3 py-2.5 hover:bg-indigo-50 text-sm rounded-lg text-gray-700 transition-colors flex items-center gap-2">👶 Explicar como p/ 5 anos</button>
-                                                    <button onClick={() => handleMagicAction(item.definition, 'example', idx)} className="text-left px-3 py-2.5 hover:bg-indigo-50 text-sm rounded-lg text-gray-700 transition-colors flex items-center gap-2">🌍 Dar exemplo real</button>
-                                                    <button onClick={() => handleMagicAction(item.definition, 'mnemonic', idx)} className="text-left px-3 py-2.5 hover:bg-indigo-50 text-sm rounded-lg text-gray-700 transition-colors flex items-center gap-2">🧠 Criar mnemônico</button>
-                                                    <button onClick={() => handleMagicAction(item.concept, 'joke', idx)} className="text-left px-3 py-2.5 hover:bg-indigo-50 text-sm rounded-lg text-gray-700 transition-colors flex items-center gap-2">🎭 Criar Piada (Memória)</button>
-                                                </div>
-                                            )}
+                                    
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h4 className="font-bold text-gray-900 text-lg leading-tight">{item.concept}</h4>
+                                        <div className="no-print shrink-0 ml-2">
+                                            <button 
+                                                onClick={() => isActive ? handleCloseMagic() : setActiveMagicMenu({idx, type: 'concept'})} 
+                                                className={`p-1.5 rounded-lg transition-all duration-200 ${isActive ? 'bg-indigo-100 text-indigo-700 rotate-90' : 'text-gray-300 hover:text-indigo-600 hover:bg-gray-50'}`} 
+                                                title={isActive ? "Fechar Insight" : "Abrir Insight Cerebral"}
+                                            >
+                                                {isActive ? <X className="w-5 h-5"/> : <Brain className="w-5 h-5" />}
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="bg-yellow-50 p-3 rounded text-sm text-gray-800 border-l-4 border-yellow-400 font-mono print:bg-white print:border-black print:italic">
-                                    ANOTAR EXATAMENTE ISSO: <br/>
-                                    "{item.definition}"
-                                    </div>
-                                    {magicOutput?.idx === idx && activeMagicMenu?.type === 'concept' && ( 
-                                        <div className="mt-3 bg-indigo-50 p-4 rounded-xl text-sm text-indigo-900 border border-indigo-200 animate-fade-in shadow-inner">
-                                            <div className="flex justify-between mb-2 pb-2 border-b border-indigo-200/50"><span className="font-bold text-xs uppercase flex items-center gap-1 text-indigo-600"><Brain className="w-3 h-3"/> Insight Gerado</span><button onClick={() => setMagicOutput(null)} className="text-xs hover:text-indigo-900 p-1 hover:bg-indigo-100 rounded"><X className="w-3 h-3"/></button></div>
-                                            <div className="leading-relaxed">{renderMarkdownText(magicOutput.text)}</div>
+
+                                    {/* TOOLBAR EXPANDABLE (INLINE) */}
+                                    {isActive && !loadingMagic && !hasResult && (
+                                        <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 animate-in slide-in-from-top-2 fade-in duration-200">
+                                            <div className="text-[10px] uppercase font-bold text-indigo-400 mb-2 px-1 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Escolha uma lente cognitiva:</div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                <button onClick={() => handleMagicAction(item.definition, 'simplify', idx)} className="text-left px-3 py-2 bg-white hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 text-sm rounded-lg text-indigo-900 transition-colors flex items-center gap-2 shadow-sm">👶 Explicar Simples</button>
+                                                <button onClick={() => handleMagicAction(item.definition, 'example', idx)} className="text-left px-3 py-2 bg-white hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 text-sm rounded-lg text-indigo-900 transition-colors flex items-center gap-2 shadow-sm">🌍 Exemplo Real</button>
+                                                <button onClick={() => handleMagicAction(item.definition, 'mnemonic', idx)} className="text-left px-3 py-2 bg-white hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 text-sm rounded-lg text-indigo-900 transition-colors flex items-center gap-2 shadow-sm">🧠 Criar Mnemônico</button>
+                                                <button onClick={() => handleMagicAction(item.concept, 'joke', idx)} className="text-left px-3 py-2 bg-white hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 text-sm rounded-lg text-indigo-900 transition-colors flex items-center gap-2 shadow-sm">🎭 Criar Piada</button>
+                                            </div>
                                         </div>
                                     )}
-                                    {loadingMagic && activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept' && (
-                                        <div className="mt-3 bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 text-xs text-indigo-600 animate-pulse flex items-center justify-center gap-2"><span className="animate-spin text-lg">🧠</span> Processando neurociência...</div>
+
+                                    {/* LOADING STATE (INLINE - SPINNING BRAIN) */}
+                                    {loadingMagic && isActive && (
+                                        <div className="mb-4 flex flex-col items-center justify-center p-6 bg-white rounded-xl border-2 border-indigo-100 border-dashed animate-pulse">
+                                             <Brain className="w-10 h-10 text-indigo-500 animate-spin mb-2" />
+                                             <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Processando Insight...</span>
+                                        </div>
                                     )}
+
+                                    {/* RESULT DISPLAY (INLINE) */}
+                                    {hasResult && isActive && (
+                                        <div className="mb-4 bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-200">
+                                            <div className="bg-indigo-50 px-3 py-2 border-b border-indigo-100 flex justify-between items-center">
+                                                <span className="text-xs font-bold text-indigo-700 uppercase flex items-center gap-1"><Brain className="w-3 h-3"/> Insight Gerado</span>
+                                            </div>
+                                            <div className="p-4 text-sm text-gray-700 leading-relaxed">
+                                                {renderMarkdownText(magicOutput.text)}
+                                            </div>
+                                            <div className="bg-gray-50 px-3 py-2 text-center border-t border-gray-100">
+                                                <button onClick={handleCloseMagic} className="text-xs text-indigo-600 font-bold hover:underline">Fechar Insight</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="bg-yellow-50 p-4 rounded-lg text-sm text-gray-800 border-l-4 border-yellow-400 font-mono print:bg-white print:border-black print:italic leading-relaxed shadow-sm">
+                                        <p className="text-[10px] font-bold text-yellow-600 uppercase mb-1">ANOTAR EXATAMENTE ISSO:</p>
+                                        "{item.definition}"
+                                    </div>
                                 </div>
                             );
                         })}

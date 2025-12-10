@@ -115,6 +115,10 @@ export const Play = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"/></svg>
 );
 
+export const Pause = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+);
+
 export const BookOpen = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
 );
@@ -211,6 +215,14 @@ export const Lock = ({ className }: { className?: string }) => (
 
 export const Smile = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
+);
+
+export const Tomato = ({ className }: { className?: string }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 3C8 3 5 4.5 5 7C5 8.5 6.5 9.8 8.8 10.5C8.3 11.5 8 12.7 8 14C8 18.4 9.8 22 12 22C14.2 22 16 18.4 16 14C16 12.7 15.7 11.5 15.2 10.5C17.5 9.8 19 8.5 19 7C19 4.5 16 3 12 3Z" fill="currentColor"/>
+    <path d="M12 3V7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M9 4.5C9.5 5.5 10.5 6.5 12 7C13.5 6.5 14.5 5.5 15 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
 );
 
 // CUSTOM LOGO COMPONENT EXPORTED HERE

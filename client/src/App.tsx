@@ -9,6 +9,7 @@ import { ChatWidget } from './components/ChatWidget';
 import { Sidebar } from './components/Sidebar';
 import { MethodologyModal } from './components/MethodologyModal';
 import { ProcessingStatus } from './components/ProcessingStatus';
+import { PomodoroTimer } from './components/PomodoroTimer';
 import { NeuroLogo, Brain, BrainCircuit, UploadCloud, FileText, Video, Search, BookOpen, Monitor, HelpCircle, Plus, Trash, Zap, Link, Rocket, BatteryCharging, Activity, GraduationCap, Globe, Edit, CheckCircle, Layers, Camera, Target, ChevronRight, Menu, Lock } from './components/Icons';
 
 export function App() {
@@ -828,6 +829,7 @@ export function App() {
       </div>
 
       {!isParetoStudy && <ChatWidget studyGuide={activeStudy?.guide || null} />}
+      {!isParetoStudy && <PomodoroTimer />}
       {showMethodologyModal && <MethodologyModal onClose={() => setShowMethodologyModal(false)} />}
     </div>
   );
