@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
-// Função auxiliar para pegar a chave da API corretamente no Vite
-const getApiKey = () => {
+// Função para pegar a chave com segurança no Vite
+const getApiKey = (): string | undefined => {
   return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
 };
 
@@ -42,21 +42,14 @@ const RESPONSE_SCHEMA: Schema = {
   required: ["subject", "overview", "coreConcepts", "checkpoints"],
 };
 
-// Helper para buscar metadados reais do DOI (para evitar alucinações)
 const fetchDoiMetadata = async (doi: string): Promise<{ title: string, abstract: string } | null> => {
   try {
     const cleanDoi = doi.trim().replace(/^doi:/i, '').replace(/^https?:\/\/doi\.org\//i, '');
     const response = await fetch(`https://api.crossref.org/works/${cleanDoi}`);
-    
     if (!response.ok) return null;
-    
     const data = await response.json();
     const item = data.message;
-    
-    const title = item.title?.[0] || '';
-    const abstract = item.abstract || "Resumo não disponível via API pública.";
-    
-    return { title, abstract };
+    return { title: item.title?.[0] || '', abstract: item.abstract || "Resumo não disponível." };
   } catch (e) {
     console.warn("Failed to fetch DOI metadata", e);
     return null;
@@ -69,82 +62,29 @@ export const generateStudyGuide = async (
   mode: StudyMode = StudyMode.NORMAL,
   isBinary: boolean = false
 ): Promise<StudyGuide> => {
-  // CORREÇÃO AQUI: Usando a função getApiKey()
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Chave de API não encontrada (VITE_GEMINI_API_KEY)");
-  
+  if (!apiKey) throw new Error("Chave de API não encontrada (VITE_GEMINI_API_KEY).");
+
   const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-2.5-flash'; 
 
-  // --- INSTRUÇÕES DO MODO ---
-  let modeInstructions = "";
-  if (mode === StudyMode.HARD) {
-    modeInstructions = `
-    MODO: HARD (HARDCORE / Detalhe Máximo).
-    - Objetivo: Domínio total do conteúdo. Sem atalhos.
-    - Quebre o conteúdo em checkpoints PEQUENOS e frequentes.
-    - Seja extremamente específico e técnico.
-    `;
-  } else if (mode === StudyMode.SURVIVAL) {
-    modeInstructions = `
-    MODO: SOBREVIVÊNCIA (O Mínimo Viável).
-    - Objetivo: Salvar o dia com o menor esforço possível.
-    - Crie POUCOS checkpoints (max 3 ou 4).
-    - Foque APENAS no essencial (Pareto 80/20).
-    `;
-  } else if (mode === StudyMode.PARETO) {
-    modeInstructions = `
-    MODO: PARETO 80/20 (RESUMO CORRIDO).
-    SUA ÚNICA MISSÃO: Identificar os 20% do conteúdo que entregam 80% do valor.
-    Escreva um RESUMO DENSO E CORRIDO no campo 'overview'.
-    Deixe 'checkpoints' e 'coreConcepts' vazios.
-    `;
-  } else {
-    modeInstructions = `
-    MODO: NORMAL (Equilibrado).
-    - Blocos médios.
-    - Organização padrão para rotina de estudos.
-    `;
-  }
-
-  let contentInstructions = "";
-  if (isBinary && (mimeType.startsWith('video/') || mimeType.startsWith('audio/'))) {
-    contentInstructions = "O conteúdo é um VÍDEO/ÁUDIO. Use 'timestamps' para dividir os checkpoints.";
-  } else if (isBinary && mimeType.startsWith('image/')) {
-    contentInstructions = "O conteúdo é uma IMAGEM. Transcreva o texto visível.";
-  } else {
-    contentInstructions = "O conteúdo é TEXTO (PDF/Artigo/Livro/Site).";
-  }
+  let modeInstructions = "MODO: NORMAL.";
+  if (mode === StudyMode.HARD) modeInstructions = "MODO: HARD (Detalhe Máximo).";
+  if (mode === StudyMode.SURVIVAL) modeInstructions = "MODO: SOBREVIVÊNCIA (Essencial).";
+  if (mode === StudyMode.PARETO) modeInstructions = "MODO: PARETO 80/20 (Resumo denso).";
 
   const MASTER_PROMPT = `
-Você é um Arquiteto de Aprendizagem Especialista.
-Tarefa: Transformar o conteúdo seguindo o modo: ${mode}.
-IDIOMA OBRIGATÓRIO DE SAÍDA: PORTUGUÊS DO BRASIL (pt-BR) 🇧🇷.
-Se o conteúdo original estiver em inglês ou outra língua, TRADUZA TUDO para Português do Brasil.
+  Atue como Arquiteto de Aprendizagem.
+  Modo: ${mode}.
+  Idioma: PORTUGUÊS DO BRASIL (pt-BR).
+  ${modeInstructions}
+  SAÍDA: APENAS JSON VÁLIDO.
+  `;
 
-${modeInstructions}
-${contentInstructions}
-
-SAÍDA OBRIGATÓRIA: JSON VÁLIDO seguindo o schema.
-`;
-
-  const parts = [];
-  const doiRegex = /\b(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)\b/i;
-  const isDoi = !isBinary && doiRegex.test(content);
-
-  if (isDoi) {
-    const identifier = content.trim();
-    const metadata = await fetchDoiMetadata(identifier);
-    if (metadata && metadata.title) {
-        parts.push({ text: `DOI: ${identifier}. Título Real: ${metadata.title}. Resumo: ${metadata.abstract}. Use isso para gerar o roteiro.` });
-    } else {
-        parts.push({ text: `DOI: ${identifier}. Use seu conhecimento interno sobre este paper.` });
-    }
-  } else if (isBinary) {
-    parts.push({ inlineData: { mimeType: mimeType, data: content } });
-    parts.push({ text: "Analise este arquivo e crie o roteiro." });
-  } else {
-    parts.push({ text: content });
+  const parts = [{ text: content }];
+  if (isBinary) {
+     parts[0] = { inlineData: { mimeType: mimeType, data: content } } as any;
+     parts.push({ text: "Analise o arquivo." });
   }
 
   try {
@@ -155,102 +95,104 @@ SAÍDA OBRIGATÓRIA: JSON VÁLIDO seguindo o schema.
         systemInstruction: MASTER_PROMPT,
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.4,
       },
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
+    // CORREÇÃO CRÍTICA: Extração de texto robusta
+    let text = "";
+    if (typeof (response as any).text === 'function') {
+        text = (response as any).text();
+    } else if ((response as any).text) {
+        text = (response as any).text;
+    } else {
+        // Tenta pegar de candidates se o atalho .text não existir
+        text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    }
+
+    if (!text) throw new Error("Sem resposta da IA.");
+
+    // LIMPEZA DE MARKDOWN (O "Pulo do Gato")
+    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    const guide = JSON.parse(text) as StudyGuide;
+    const guide = JSON.parse(cleanText) as StudyGuide;
+    
     if (guide.checkpoints) {
         guide.checkpoints = guide.checkpoints.map(cp => ({ ...cp, completed: false }));
     }
     return guide;
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Gemini Error:", error);
     throw error;
   }
 };
 
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
-  // CORREÇÃO AQUI
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Chave de API não encontrada");
-  const ai = new GoogleGenAI({ apiKey });
-  const modelName = 'gemini-2.5-flash';
-
-  const prompt = `Crie 5-8 slides educacionais JSON sobre: ${guide.subject}. Baseado em: ${guide.overview}. IDIOMA: PORTUGUÊS DO BRASIL.`;
-  
-  const response = await ai.models.generateContent({
-    model: modelName,
-    contents: { parts: [{ text: prompt }] },
-    config: { responseMimeType: "application/json" } 
-  });
-  return JSON.parse(response.text || "[]") as Slide[];
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API Key missing");
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: { parts: [{ text: `Crie slides JSON para: ${guide.subject}. Baseado em: ${guide.overview}` }] },
+        config: { responseMimeType: "application/json" }
+    });
+    
+    let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    return JSON.parse(text || "[]");
 };
 
 export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: any): Promise<QuizQuestion[]> => {
-  // CORREÇÃO AQUI
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Chave de API não encontrada");
-  const ai = new GoogleGenAI({ apiKey });
-  const modelName = 'gemini-2.5-flash';
-  
-  const prompt = `Crie um Quiz JSON com 6 perguntas sobre ${guide.subject}. Misture múltipla escolha e aberta. IDIOMA: PORTUGUÊS DO BRASIL.`;
-  
-  const response = await ai.models.generateContent({
-    model: modelName,
-    contents: { parts: [{ text: prompt }] },
-    config: { responseMimeType: "application/json" }
-  });
-  return JSON.parse(response.text || "[]") as QuizQuestion[];
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API Key missing");
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: { parts: [{ text: `Crie um Quiz JSON para: ${guide.subject}` }] },
+        config: { responseMimeType: "application/json" }
+    });
+    
+    let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    return JSON.parse(text || "[]");
 };
 
 export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]> => {
-  // CORREÇÃO AQUI
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Chave de API não encontrada");
-  const ai = new GoogleGenAI({ apiKey });
-  const modelName = 'gemini-2.5-flash';
-  
-  const prompt = `Crie 10 Flashcards JSON (front/back) sobre ${guide.subject}. IDIOMA: PORTUGUÊS DO BRASIL.`;
-  
-  const response = await ai.models.generateContent({
-    model: modelName,
-    contents: { parts: [{ text: prompt }] },
-    config: { responseMimeType: "application/json" }
-  });
-  return JSON.parse(response.text || "[]") as Flashcard[];
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API Key missing");
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: { parts: [{ text: `Crie Flashcards JSON para: ${guide.subject}` }] },
+        config: { responseMimeType: "application/json" }
+    });
+    
+    let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    return JSON.parse(text || "[]");
 };
 
-export const sendChatMessage = async (history: ChatMessage[], newMessage: string, context?: any): Promise<string> => {
-  // CORREÇÃO AQUI
-  const apiKey = getApiKey();
-  if (!apiKey) return "Erro: Chave de API não encontrada.";
-  const ai = new GoogleGenAI({ apiKey });
-  const modelName = 'gemini-2.5-flash'; 
-  
-  const chat = ai.chats.create({ model: modelName, history: history.slice(-5).map(m => ({ role: m.role, parts: [{ text: m.text }] })) });
-  const result = await chat.sendMessage({ message: newMessage });
-  return result.text || "...";
+export const sendChatMessage = async (history: ChatMessage[], msg: string): Promise<string> => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "Erro de API Key.";
+    const ai = new GoogleGenAI({ apiKey });
+    const chat = ai.chats.create({ model: 'gemini-2.0-flash', history: history.slice(-5).map(m=>({role:m.role, parts:[{text:m.text}]})) });
+    const res = await chat.sendMessage(msg);
+    return res.text || "";
 };
 
-export const refineContent = async (text: string, task: string): Promise<string> => {
-  // CORREÇÃO AQUI
-  const apiKey = getApiKey();
-  if (!apiKey) return "Erro: Chave de API não encontrada.";
-  const ai = new GoogleGenAI({ apiKey });
-  // FORCE PORTUGUESE OUTPUT IN INSTRUCTION
-  const instruction = `Task: ${task}. Content to analyze: "${text}".
-  CRITICAL INSTRUCTION: OUTPUT MUST BE IN PORTUGUESE (BRAZIL/PT-BR) 🇧🇷.
-  Even if the input text is English, TRANSLATE AND ADAPT THE EXPLANATION TO PORTUGUESE.
-  Keep it concise and educational.`;
-  
-  const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ text: instruction }] } });
-  return response.text || "";
+export const refineContent = async (text: string, task: string): Promise<string> => { 
+    const apiKey = getApiKey();
+    if (!apiKey) return "Erro de API Key.";
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ text: `Refine (${task}): ${text}` }] } });
+    const raw = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+    return raw || "";
 };
 
-export const generateDiagram = async (desc: string): Promise<string> => {
-  return ""; // Placeholder
-};
+export const generateDiagram = async (desc: string): Promise<string> => { return ""; };
