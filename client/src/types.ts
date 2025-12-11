@@ -1,4 +1,5 @@
 
+
 export enum InputType {
   TEXT = 'TEXT',
   PDF = 'PDF',
@@ -83,6 +84,7 @@ export interface StudySession {
   flashcards: Flashcard[] | null;
   createdAt: number;
   updatedAt: number;
+  nextReviewDate?: number; // Timestamp for spaced repetition
 }
 
 export interface Folder {

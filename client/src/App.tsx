@@ -11,7 +11,9 @@ import { Sidebar } from './components/Sidebar';
 import { MethodologyModal } from './components/MethodologyModal';
 import { ProcessingStatus } from './components/ProcessingStatus';
 import { PomodoroTimer } from './components/PomodoroTimer';
-import { NeuroLogo, Brain, BrainCircuit, UploadCloud, FileText, Video, Search, BookOpen, Monitor, HelpCircle, Plus, Trash, Zap, Link, Rocket, BatteryCharging, Activity, GraduationCap, Globe, Edit, CheckCircle, Layers, Camera, Target, ChevronRight, Menu, Lock } from './components/Icons';
+import { ReviewSchedulerModal } from './components/ReviewSchedulerModal';
+import { NotificationCenter } from './components/NotificationCenter';
+import { NeuroLogo, Brain, BrainCircuit, UploadCloud, FileText, Video, Search, BookOpen, Monitor, HelpCircle, Plus, Trash, Zap, Link, Rocket, BatteryCharging, Activity, GraduationCap, Globe, Edit, CheckCircle, Layers, Camera, Target, ChevronRight, Menu, Lock, Bell, Calendar } from './components/Icons';
 
 export function App() {
   // --- STATE ---
@@ -63,6 +65,10 @@ export function App() {
   // Methodology Modal State
   const [showMethodologyModal, setShowMethodologyModal] = useState(false);
 
+  // Review Scheduler State
+  const [showReviewScheduler, setShowReviewScheduler] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -78,6 +84,9 @@ export function App() {
   // Derived State
   const activeStudy = studies.find(s => s.id === activeStudyId) || null;
   const isParetoStudy = activeStudy?.mode === StudyMode.PARETO;
+  
+  // Calculate Notifications
+  const dueReviewsCount = studies.filter(s => s.nextReviewDate && s.nextReviewDate <= Date.now()).length;
 
   // Reset editing state when changing study
   useEffect(() => {
@@ -178,6 +187,14 @@ export function App() {
         setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, title: editTitleInput } : s));
     }
     setIsEditingTitle(false);
+  };
+
+  const handleScheduleReview = (timestamp: number) => {
+      if (activeStudyId) {
+          setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, nextReviewDate: timestamp } : s));
+          setShowReviewScheduler(false);
+          alert(`Revisão agendada para ${new Date(timestamp).toLocaleDateString('pt-BR')}!`);
+      }
   };
 
   const addSourceToStudy = async () => {
@@ -474,7 +491,7 @@ export function App() {
                     
                     {/* HERO LOGO - CENTRALIZADO E GRANDE */}
                     <div className="flex justify-center mb-6">
-                        <div className="p-8 bg-gradient-to-br from-indigo-50 to-white rounded-[2rem] shadow-xl border border-indigo-100">
+                        <div className="p-1 bg-gradient-to-br from-indigo-50 to-white rounded-[2rem] shadow-xl border border-indigo-100">
                             <NeuroLogo size={100} className="text-indigo-600" />
                         </div>
                     </div>
@@ -531,6 +548,18 @@ export function App() {
                 </div>
             </div>
         </main>
+        
+        {/* LANDING PAGE FOOTER */}
+        <footer className="py-6 text-center border-t border-gray-200 bg-white">
+            <p className="text-sm text-gray-500 font-medium">
+                Desenvolvido por <span className="text-gray-900 font-bold">Bruno Alexandre</span>
+            </p>
+            <div className="mt-2">
+                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wider">
+                    Versão Beta
+                </span>
+            </div>
+        </footer>
       </div>
     );
   }
@@ -571,7 +600,7 @@ export function App() {
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         {activeStudy && !isParetoStudy && (
-          <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-10">
+          <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-10 relative">
             <div className="flex items-center gap-2 overflow-hidden mr-2">
                 <button 
                     onClick={() => setIsMobileMenuOpen(true)}
@@ -590,6 +619,16 @@ export function App() {
                         <h2 className="text-lg md:text-xl font-bold text-gray-800 truncate" title={activeStudy.title}>{activeStudy.title}</h2>
                         <button onClick={() => { setIsEditingTitle(true); setEditTitleInput(activeStudy.title); }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity hidden md:block" title="Renomear Estudo"><Edit className="w-4 h-4"/></button>
                         {activeStudy.mode === StudyMode.SURVIVAL && <span className="hidden md:inline-block ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded uppercase border border-green-200">Sobrevivência</span>}
+                        
+                        {/* SPACED REPETITION BUTTON */}
+                         <button 
+                            onClick={() => setShowReviewScheduler(true)}
+                            className={`ml-4 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${activeStudy.nextReviewDate && activeStudy.nextReviewDate > Date.now() ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        >
+                            <Calendar className="w-3 h-3" />
+                            {activeStudy.nextReviewDate ? `Revisão: ${new Date(activeStudy.nextReviewDate).toLocaleDateString('pt-BR')}` : 'Agendar Revisão'}
+                        </button>
+
                     </div>
                 )}
             </div>
@@ -601,6 +640,20 @@ export function App() {
                     <button onClick={() => setActiveTab('slides')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'slides' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><Monitor className="w-3 h-3 md:w-4 md:h-4" /> Slides</button>
                     <button onClick={() => setActiveTab('quiz')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'quiz' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><HelpCircle className="w-3 h-3 md:w-4 md:h-4" /> Quiz</button>
                     <button onClick={() => setActiveTab('flashcards')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'flashcards' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><Layers className="w-3 h-3 md:w-4 md:h-4" /> Cards</button>
+                </div>
+
+                {/* NOTIFICATION BELL */}
+                <div className="relative">
+                    <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors relative">
+                        <Bell className="w-5 h-5"/>
+                        {dueReviewsCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>}
+                    </button>
+                    {showNotifications && (
+                        <>
+                         <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
+                         <NotificationCenter studies={studies} onSelectStudy={setActiveStudyId} onClose={() => setShowNotifications(false)} />
+                        </>
+                    )}
                 </div>
             </div>
           </header>
@@ -620,6 +673,24 @@ export function App() {
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-8 scroll-smooth relative">
             {!activeStudy ? (
                 <div className="h-full flex flex-col items-center justify-center max-w-6xl mx-auto relative">
+                     {/* NOTIFICATION BELL FOR HOME SCREEN */}
+                    {!isParetoStudy && (
+                        <div className="absolute top-4 right-4 md:top-8 md:right-8 z-20">
+                            <div className="relative">
+                                <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 bg-white text-gray-500 hover:text-indigo-600 shadow-sm border border-gray-200 hover:border-indigo-200 rounded-full transition-colors relative">
+                                    <Bell className="w-6 h-6"/>
+                                    {dueReviewsCount > 0 && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white animate-pulse"></span>}
+                                </button>
+                                {showNotifications && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
+                                        <NotificationCenter studies={studies} onSelectStudy={setActiveStudyId} onClose={() => setShowNotifications(false)} />
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {quickInputMode === 'none' ? (
                       <>
                         <div className="text-center mb-8 md:mb-10 mt-8 md:mt-0">
@@ -832,6 +903,14 @@ export function App() {
       {!isParetoStudy && <ChatWidget studyGuide={activeStudy?.guide || null} />}
       {!isParetoStudy && activeStudy?.guide && <PomodoroTimer />}
       {showMethodologyModal && <MethodologyModal onClose={() => setShowMethodologyModal(false)} />}
+      
+      {showReviewScheduler && activeStudy && (
+          <ReviewSchedulerModal 
+            studyTitle={activeStudy.title}
+            onSchedule={handleScheduleReview}
+            onClose={() => setShowReviewScheduler(false)}
+          />
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Folder, StudySession } from '../types';
 import { FolderIcon, Plus, FileText, ChevronRight, ChevronDown, Trash, X, Edit, CornerDownRight, GraduationCap, NeuroLogo } from './Icons';
@@ -359,6 +360,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
          >
             <GraduationCap className="w-4 h-4" /> Método e Instruções
          </button>
+
+         {/* Credits */}
+         <div className="pt-2 text-center">
+            <p className="text-[10px] text-gray-400 font-medium">
+                Desenvolvido por Bruno Alexandre
+            </p>
+            <span className="text-[10px] text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-wider font-bold mt-1 inline-block">
+                Versão Beta
+            </span>
+         </div>
       </div>
     </div>
   );
