@@ -533,7 +533,7 @@ export function App() {
                             className="relative flex flex-col items-start p-6 bg-white hover:bg-red-50 border-2 border-red-100 hover:border-red-200 rounded-2xl transition-all w-full shadow-sm hover:shadow-xl hover:-translate-y-1 overflow-hidden"
                         >
                              <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
-                            <div className="bg-red-100 p-3 rounded-xl text-red-600 mb-4 group-hover:scale-110 transition-transform"><GenerateIcon className="w-8 h-8" /></div>
+                            <div className="bg-red-100 p-3 rounded-xl text-red-600 mb-4 group-hover:scale-110 transition-transform"><Target className="w-8 h-8" /></div>
                             <h3 className="text-lg font-bold text-gray-900">Método Pareto 80/20</h3>
                             <p className="text-sm text-gray-500 mt-2 text-left flex-1">
                                 Extração rápida. Apenas o essencial do arquivo. Sem pastas, sem login.
