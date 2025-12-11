@@ -231,13 +231,12 @@ export const Tomato = ({ className }: { className?: string }) => (
 export const NeuroLogo = ({ className, size = 40 }: { className?: string, size?: number }) => (
   <div className={className} style={{ height: size, width: size, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <img
-        src="https://i.ibb.co/Q7RkqQ1J/logooficial.png"
+        src="https://i.ibb.co/rRD7bqP3/logogrande.png"
         alt="NeuroStudy Architect"
         style={{
             height: '100%',
             width: '100%',
-            objectFit: 'contain',
-            transform: 'scale(1.4)' // Increased scale to fill edges as requested
+            objectFit: 'contain'
         }}
         onError={(e) => {
              // Fallback minimal se a imagem falhar

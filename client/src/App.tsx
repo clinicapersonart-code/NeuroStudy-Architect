@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { InputType, ProcessingState, StudyGuide, StudySession, Folder, StudySource, StudyMode } from './types';
 import { generateStudyGuide, generateSlides, generateQuiz, generateFlashcards } from './services/geminiService';
@@ -459,7 +460,7 @@ export function App() {
             <div className="flex items-center gap-2">
                 {/* LOGO NO HEADER DA LANDING PAGE */}
                 <div className="flex items-center gap-2">
-                    <NeuroLogo size={32} className="text-indigo-600" />
+                    <NeuroLogo size={40} className="text-indigo-600" />
                     <span className="font-extrabold text-slate-900 tracking-tight text-xl">NeuroStudy</span>
                 </div>
             </div>

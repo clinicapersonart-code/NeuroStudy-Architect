@@ -312,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="w-full text-left transition-colors flex items-center gap-2 px-2"
           title="Voltar à tela inicial"
         >
-           <NeuroLogo size={28} className="text-indigo-600 shrink-0" /> 
+           <NeuroLogo size={35} className="text-indigo-600 shrink-0" /> 
            <span className="font-bold text-indigo-900 text-lg">NeuroStudy</span>
         </button>
         {dragOverHeader && <p className="text-xs text-indigo-500 mt-1">Soltar para mover para Raiz</p>}
