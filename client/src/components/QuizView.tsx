@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { QuizQuestion } from '../types';
-import { CheckCircle, HelpCircle, FileText, RefreshCw, Trash, Mic, Settings, Play, X, Activity } from './Icons';
+import { CheckCircle, HelpCircle, FileText, RefreshCw, Trash, Mic, Settings, Play, X, Activity, GraduationCap } from './Icons';
 
 interface QuizViewProps {
   questions: QuizQuestion[];
@@ -61,9 +61,36 @@ export const QuizView: React.FC<QuizViewProps> = ({ questions, onGenerate, onCle
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Configurar Quiz</h2>
             <p className="text-gray-500 mb-8">Personalize sua sessão de revisão ativa.</p>
             <div className="space-y-6 text-left">
-                <div><label className="block text-sm font-bold text-gray-700 mb-2">Quantidade de Questões</label><div className="flex flex-wrap gap-3">{[3, 6, 10, 20, 30].map(n => (<button key={n} onClick={() => setQuantity(n)} className={`flex-1 py-2 px-3 rounded-lg border font-medium transition-all ${quantity === n ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{n}</button>))}</div></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-2">Nível de Dificuldade</label><div className="grid grid-cols-2 gap-3"><button onClick={() => setDifficulty('mixed')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'mixed' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🔀 Misto</button><button onClick={() => setDifficulty('easy')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'easy' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🟢 Fácil</button><button onClick={() => setDifficulty('medium')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'medium' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🟡 Médio</button><button onClick={() => setDifficulty('hard')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'hard' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🔴 Difícil</button></div></div>
-                <button onClick={() => onGenerate({ quantity, difficulty })} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-transform active:scale-[0.99] flex items-center justify-center gap-2"><Play className="w-5 h-5" /> Gerar Quiz Agora</button>
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Quantidade de Questões</label>
+                    <div className="flex gap-3 mb-3">
+                        {[3, 6, 10].map(n => (
+                            <button key={n} onClick={() => setQuantity(n)} className={`flex-1 py-3 px-3 rounded-lg border font-medium transition-all ${quantity === n ? 'bg-indigo-50 text-indigo-700 border-indigo-500 ring-1 ring-indigo-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                                {n} Questões
+                            </button>
+                        ))}
+                    </div>
+                    {/* Botão Provão Destacado */}
+                    <button onClick={() => setQuantity(20)} className={`w-full py-3 px-3 rounded-lg border font-bold transition-all flex items-center justify-center gap-2 ${quantity === 20 ? 'bg-purple-100 text-purple-800 border-purple-500 ring-1 ring-purple-500' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}>
+                        <GraduationCap className="w-5 h-5"/>
+                        Provão (20 Questões)
+                    </button>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Nível de Dificuldade</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={() => setDifficulty('mixed')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'mixed' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🔀 Misto</button>
+                        <button onClick={() => setDifficulty('easy')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'easy' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🟢 Fácil</button>
+                        <button onClick={() => setDifficulty('medium')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'medium' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🟡 Médio</button>
+                        <button onClick={() => setDifficulty('hard')} className={`py-2 px-4 rounded-lg border font-medium transition-all ${difficulty === 'hard' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>🔴 Difícil</button>
+                    </div>
+                </div>
+                
+                <button onClick={() => onGenerate({ quantity, difficulty })} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-transform active:scale-[0.99] flex items-center justify-center gap-2">
+                    <Play className="w-5 h-5" /> 
+                    {quantity === 20 ? 'Iniciar Provão' : 'Gerar Quiz Agora'}
+                </button>
             </div>
         </div>
     );

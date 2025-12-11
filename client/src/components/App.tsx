@@ -85,6 +85,11 @@ export function App() {
   const activeStudy = studies.find(s => s.id === activeStudyId) || null;
   const isParetoStudy = activeStudy?.mode === StudyMode.PARETO;
   
+  // Calculate Completion Logic
+  const totalCheckpoints = activeStudy?.guide?.checkpoints?.length || 0;
+  const completedCheckpoints = activeStudy?.guide?.checkpoints?.filter(c => c.completed).length || 0;
+  const isGuideComplete = totalCheckpoints > 0 && totalCheckpoints === completedCheckpoints;
+
   // Calculate Notifications
   const dueReviewsCount = studies.filter(s => s.nextReviewDate && s.nextReviewDate <= Date.now()).length;
 
@@ -638,8 +643,26 @@ export function App() {
                     <button onClick={() => setActiveTab('sources')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all ${activeTab === 'sources' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Fontes</button>
                     <button onClick={() => setActiveTab('guide')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'guide' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><BookOpen className="w-3 h-3 md:w-4 md:h-4" /> Roteiro</button>
                     <button onClick={() => setActiveTab('slides')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'slides' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><Monitor className="w-3 h-3 md:w-4 md:h-4" /> Slides</button>
-                    <button onClick={() => setActiveTab('quiz')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'quiz' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><HelpCircle className="w-3 h-3 md:w-4 md:h-4" /> Quiz</button>
-                    <button onClick={() => setActiveTab('flashcards')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'flashcards' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><Layers className="w-3 h-3 md:w-4 md:h-4" /> Cards</button>
+                    
+                    {/* Locked Quiz Tab */}
+                    <button 
+                        onClick={() => isGuideComplete && setActiveTab('quiz')} 
+                        disabled={!isGuideComplete}
+                        className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'quiz' ? 'bg-white shadow text-indigo-700' : isGuideComplete ? 'text-gray-500 hover:text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+                    >
+                        {isGuideComplete ? <HelpCircle className="w-3 h-3 md:w-4 md:h-4" /> : <Lock className="w-3 h-3 md:w-4 md:h-4" />} 
+                        Quiz
+                    </button>
+                    
+                    {/* Locked Flashcards Tab */}
+                    <button 
+                        onClick={() => isGuideComplete && setActiveTab('flashcards')} 
+                        disabled={!isGuideComplete}
+                        className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'flashcards' ? 'bg-white shadow text-indigo-700' : isGuideComplete ? 'text-gray-500 hover:text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+                    >
+                        {isGuideComplete ? <Layers className="w-3 h-3 md:w-4 md:h-4" /> : <Lock className="w-3 h-3 md:w-4 md:h-4" />} 
+                        Cards
+                    </button>
                 </div>
 
                 {/* NOTIFICATION BELL */}

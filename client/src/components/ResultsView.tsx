@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StudyGuide } from '../types';
-import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight, Smile, Sparkles, Globe } from './Icons';
+import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight, Smile, Sparkles, Globe, Lock, Play, RefreshCw } from './Icons';
 import { refineContent, generateDiagram } from '../services/geminiService';
 
 interface ResultsViewProps {
@@ -24,6 +24,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGene
   const completedCount = guide.checkpoints.filter(cp => cp.completed).length;
   const totalCount = guide.checkpoints.length;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  const allCompleted = totalCount > 0 && completedCount === totalCount;
 
   const adjustTextareaHeight = (element: HTMLTextAreaElement | null) => {
     if (element) {
@@ -145,14 +146,11 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
   };
 
   const handleMagicAction = async (text: string, task: 'simplify' | 'example' | 'mnemonic' | 'joke', idx: number) => {
-    // Keep the menu logic to show loading state in place
-    // We do NOT set activeMagicMenu to null immediately, we keep it to show the loading spinner inside the container
     setLoadingMagic(true);
     setMagicOutput(null);
     try {
       const result = await refineContent(text, task);
       setMagicOutput({ idx, text: result });
-      // We keep the menu 'active' so the result box stays visible, but we will hide the buttons in the render
     } catch (e) {
       console.error(e);
       setLoadingMagic(false);
@@ -209,9 +207,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
           ← {isParetoOnly ? 'Analisar outro arquivo' : 'Criar novo roteiro'}
         </button>
         <div className="flex gap-2 flex-wrap justify-end">
-          {!isParetoOnly && (
-            <button onClick={onGenerateQuiz} className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Gerar Quiz de Revisão"><HelpCircle className="w-4 h-4" /> Gerar Quiz</button>
-          )}
           <button onClick={handleDownloadMD} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Baixar Nota para Obsidian (Markdown)"><FileCode className="w-4 h-4" /> Salvar Obsidian</button>
           <button onClick={handlePrint} className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors" title="Imprimir (Opção Nativa)"><Printer className="w-4 h-4" /> Imprimir</button>
           <button onClick={handleDirectDownloadPDF} disabled={isGeneratingPDF} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50" title="Baixar arquivo PDF direto">{isGeneratingPDF ? <span className="animate-spin text-white">⌛</span> : <Download className="w-4 h-4" />} {isGeneratingPDF ? 'Gerando...' : 'Download PDF'}</button>
@@ -260,7 +255,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                         </div>
                                     </div>
 
-                                    {/* TOOLBAR EXPANDABLE (INLINE) */}
+                                    {/* TOOLBAR EXPANDABLE */}
                                     {isActive && !loadingMagic && !hasResult && (
                                         <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 animate-in slide-in-from-top-2 fade-in duration-200">
                                             <div className="text-[10px] uppercase font-bold text-indigo-400 mb-2 px-1 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Escolha uma lente cognitiva:</div>
@@ -273,7 +268,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                         </div>
                                     )}
 
-                                    {/* LOADING STATE (INLINE - SPINNING BRAIN) */}
+                                    {/* LOADING STATE */}
                                     {loadingMagic && isActive && (
                                         <div className="mb-4 flex flex-col items-center justify-center p-6 bg-white rounded-xl border-2 border-indigo-100 border-dashed animate-pulse">
                                              <Brain className="w-10 h-10 text-indigo-500 animate-spin mb-2" />
@@ -281,7 +276,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                         </div>
                                     )}
 
-                                    {/* RESULT DISPLAY (INLINE) */}
+                                    {/* RESULT DISPLAY */}
                                     {hasResult && isActive && (
                                         <div className="mb-4 bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-200">
                                             <div className="bg-indigo-50 px-3 py-2 border-b border-indigo-100 flex justify-between items-center">
@@ -347,31 +342,94 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                     <div className="flex gap-3"><div className="min-w-6 pt-1 text-blue-500 print:text-black"><Eye className="w-5 h-5"/></div><div><p className="text-xs font-bold text-gray-400 uppercase print:text-black">Procurar</p><p className="text-gray-700 print:text-black">{cp.lookFor}</p></div></div>
                                     <div className="flex gap-3"><div className="min-w-6 pt-1 text-green-600 print:text-black"><CheckCircle className="w-5 h-5"/></div><div><p className="text-xs font-bold text-gray-400 uppercase print:text-black">Pergunta (Active Recall)</p><p className="text-gray-800 font-medium italic print:text-black">"{cp.question}"</p></div></div>
                                 </div>
-                                <div className="bg-yellow-50 rounded-lg p-5 border border-yellow-100 space-y-4 print:bg-white print:border-black">
-                                    <div className="flex gap-3 group/edit"><div className="min-w-6 pt-1 text-gray-600 print:text-black"><PenTool className="w-5 h-5"/></div><div className="w-full"><div className="flex items-center justify-between mb-1"><p className="text-xs font-bold text-gray-500 uppercase print:text-black">Anotar Exatamente Isso</p><div className="flex gap-1 opacity-0 group-hover/edit:opacity-100 transition-opacity bg-white shadow-sm border border-gray-200 rounded px-1 no-print"><button onMouseDown={(e) => {e.preventDefault(); handleFormat(idx, 'b');}} className="px-1 text-xs font-serif font-bold hover:bg-gray-100" title="Negrito">B</button><button onMouseDown={(e) => {e.preventDefault(); handleFormat(idx, 'i');}} className="px-1 text-xs font-serif italic hover:bg-gray-100" title="Itálico">I</button><button onMouseDown={(e) => {e.preventDefault(); handleFormat(idx, 'u');}} className="px-1 text-xs font-serif underline hover:bg-gray-100" title="Sublinhado">U</button></div></div><div className="border-l-2 border-gray-300 pl-3 print:border-black"><textarea id={`note-textarea-${idx}`} ref={el => { textareaRefs.current[idx] = el; if(el) adjustTextareaHeight(el); }} value={cp.noteExactly} onInput={(e) => adjustTextareaHeight(e.target as HTMLTextAreaElement)} onChange={(e) => handleUpdateCheckpoint(idx, 'noteExactly', e.target.value)} className="w-full bg-transparent hover:bg-white focus:bg-white border border-transparent hover:border-gray-200 focus:border-indigo-300 rounded px-2 py-1 transition-all text-gray-900 font-serif leading-relaxed resize-none overflow-hidden print:hidden focus:outline-none focus:ring-2 focus:ring-indigo-100" spellCheck={false} placeholder="Clique para editar..." /><div className="hidden print:block text-gray-900 font-serif leading-relaxed whitespace-pre-wrap">{renderFormatted(cp.noteExactly)}</div></div></div></div>
-                                    {showDrawSection && (
-                                    <div className={`mt-4 pt-4 border-t ${cp.drawLabel === 'essential' ? 'border-orange-200' : 'border-gray-200'} print:border-black`}>
-                                        <div className="flex justify-between items-center mb-2"><p className={`text-xs font-bold uppercase print:text-black ${cp.drawLabel === 'essential' ? 'text-orange-600' : 'text-slate-500'}`}>{drawLabelText}</p>{!cp.imageUrl && (<button onClick={() => handleGenerateImage(idx, cp.drawExactly)} disabled={loadingImage === idx} className="text-xs flex items-center gap-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded transition-colors no-print">{loadingImage === idx ? <span className="animate-spin">⌛</span> : <ImageIcon className="w-3 h-3" />} Gerar Diagrama IA</button>)}</div>
-                                        {cp.imageUrl ? (<div className="relative group"><img src={cp.imageUrl} alt="Diagrama Gerado" className="w-full h-auto rounded border border-gray-200" /><button onClick={() => handleGenerateImage(idx, cp.drawExactly)} className="absolute top-2 right-2 bg-white/80 p-1 rounded hover:bg-white text-xs opacity-0 group-hover:opacity-100 transition-opacity no-print">Regerar</button></div>) : (<div className={`border-2 border-dashed rounded p-4 text-sm print:border-black print:text-black group/editdraw relative ${cp.drawLabel === 'essential' ? 'border-orange-300 bg-orange-50/50 text-orange-800' : 'border-gray-300 bg-white text-gray-500'}`}><div className="flex gap-2"><span className="pt-1">✏️</span><div className="w-full"><textarea value={cp.drawExactly} onChange={(e) => handleUpdateCheckpoint(idx, 'drawExactly', e.target.value)} className="w-full bg-transparent hover:bg-white focus:bg-white border border-transparent hover:border-gray-200 focus:border-indigo-300 rounded px-2 py-1 transition-all text-inherit text-sm resize-y print:hidden focus:outline-none focus:ring-2 focus:ring-indigo-100" rows={2} /><div className="hidden print:block">{renderFormatted(cp.drawExactly)}</div></div></div><span className="absolute top-2 right-2 opacity-0 group-hover/editdraw:opacity-100 transition-opacity text-gray-300 print:hidden"><Edit className="w-3 h-3"/></span></div>)}
+
+                                <div className="space-y-4">
+                                    <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 print:bg-white print:border-black relative group">
+                                        <p className="text-[10px] font-bold text-yellow-600 uppercase mb-2 flex justify-between items-center print:text-black"><span>📝 Anotar Exatamente Isso</span></p>
+                                        <textarea
+                                            id={`note-textarea-${idx}`}
+                                            ref={(el) => { textareaRefs.current[idx] = el; }}
+                                            value={cp.noteExactly}
+                                            onChange={(e) => {
+                                                handleUpdateCheckpoint(idx, 'noteExactly', e.target.value);
+                                                adjustTextareaHeight(e.target);
+                                            }}
+                                            className="w-full bg-transparent border-none outline-none resize-none text-gray-800 font-mono text-sm leading-relaxed overflow-hidden focus:ring-0 p-0"
+                                            placeholder="Suas anotações..."
+                                        />
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 no-print bg-yellow-100 rounded-lg p-1">
+                                            <button onClick={() => handleFormat(idx, 'b')} className="w-6 h-6 flex items-center justify-center bg-white rounded text-xs font-bold hover:bg-gray-50 border border-yellow-200">B</button>
+                                            <button onClick={() => handleFormat(idx, 'i')} className="w-6 h-6 flex items-center justify-center bg-white rounded text-xs italic hover:bg-gray-50 border border-yellow-200">I</button>
+                                            <button onClick={() => handleFormat(idx, 'mark')} className="w-6 h-6 flex items-center justify-center bg-yellow-200 rounded text-xs hover:bg-yellow-300 border border-yellow-300">M</button>
+                                        </div>
                                     </div>
+
+                                    {showDrawSection && (
+                                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 border-dashed print:bg-white print:border-black">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <p className="text-[10px] font-bold text-purple-600 uppercase flex items-center gap-1 print:text-black"><PenTool className="w-3 h-3"/> {drawLabelText}</p>
+                                            </div>
+                                            <p className="text-gray-700 text-sm mb-3 italic print:text-black">{cp.drawExactly}</p>
+                                            
+                                            {cp.imageUrl ? (
+                                                <div className="relative group">
+                                                    <img src={cp.imageUrl} alt="Diagrama gerado" className="w-full rounded-lg border border-gray-200" />
+                                                    <button onClick={() => handleGenerateImage(idx, cp.drawExactly)} className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-lg text-gray-600 hover:text-indigo-600 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity no-print" title="Regerar imagem"><RefreshCw className="w-4 h-4"/></button>
+                                                </div>
+                                            ) : (
+                                                <div className="h-32 bg-white rounded-lg border-2 border-dashed border-purple-100 flex flex-col items-center justify-center text-purple-300 no-print">
+                                                    <div className="text-center">
+                                                        <p className="text-xs mb-2">Espaço para desenho</p>
+                                                        <button 
+                                                            onClick={() => handleGenerateImage(idx, cp.drawExactly)}
+                                                            disabled={loadingImage === idx}
+                                                            className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 mx-auto"
+                                                        >
+                                                            {loadingImage === idx ? <span className="animate-spin">⌛</span> : <ImageIcon className="w-3 h-3" />} 
+                                                            {loadingImage === idx ? 'Gerando...' : 'Gerar Sugestão IA'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
                         </div>
                     </div>
-                )})}
+                    );
+                })}
+                </div>
+
+                {/* BOTTOM QUIZ UNLOCK SECTION */}
+                <div className="mt-12 md:pl-20 pb-8 no-print">
+                    <div className={`rounded-xl border-2 p-6 flex flex-col md:flex-row items-center justify-between gap-6 transition-all ${allCompleted ? 'bg-green-50 border-green-200 shadow-lg shadow-green-100' : 'bg-gray-50 border-gray-200 border-dashed opacity-75'}`}>
+                        <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${allCompleted ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}>
+                                {allCompleted ? <HelpCircle className="w-6 h-6"/> : <Lock className="w-6 h-6"/>}
+                            </div>
+                            <div>
+                                <h4 className={`font-bold text-lg ${allCompleted ? 'text-green-800' : 'text-gray-500'}`}>
+                                    {allCompleted ? 'Jornada Concluída! Quiz Liberado' : 'Complete a Jornada para Liberar'}
+                                </h4>
+                                <p className="text-sm text-gray-600 max-w-md">
+                                    {allCompleted ? 'Parabéns! Você completou todos os checkpoints. Agora é hora de testar seu conhecimento.' : 'Marque todos os checkpoints acima como concluídos para liberar o Quiz e os Flashcards.'}
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={onGenerateQuiz}
+                            disabled={!allCompleted}
+                            className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2 transform ${allCompleted ? 'bg-green-600 hover:bg-green-700 hover:scale-105 cursor-pointer shadow-green-200' : 'bg-gray-400 cursor-not-allowed grayscale'}`}
+                        >
+                            <Play className="w-5 h-5"/>
+                            {allCompleted ? 'Iniciar Quiz' : 'Bloqueado'}
+                        </button>
+                    </div>
                 </div>
             </div>
         )}
       </div>
-      
-      {!isParetoOnly && (
-        <div className="bg-emerald-50 rounded-xl p-8 text-center border border-emerald-100 no-print">
-            <h3 className="text-emerald-800 font-bold text-lg mb-2">Fase 3: Consolidação</h3>
-            <p className="text-emerald-700 mb-4 max-w-2xl mx-auto">Você completou o mapa! Agora faça a <strong>Revisão Imediata</strong> lendo suas anotações em voz alta. Agende a primeira repetição espaçada para amanhã.</p>
-            <div className="flex justify-center gap-4"><button onClick={onGenerateQuiz} className="bg-emerald-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 flex items-center gap-2"><HelpCircle className="w-5 h-5" /> Fazer Quiz Agora</button></div>
-        </div>
-      )}
     </div>
   );
 };
