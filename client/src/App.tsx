@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { InputType, ProcessingState, StudyGuide, StudySession, Folder, StudySource, StudyMode } from './types';
 import { generateStudyGuide, generateSlides, generateQuiz, generateFlashcards } from './services/geminiService';
@@ -494,12 +493,10 @@ export function App() {
                 <div className="space-y-4">
                     <span className="inline-block py-1 px-3 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-widest border border-indigo-100">Neurociência Aplicada</span>
                     
-                    {/* HERO LOGO - CENTRALIZADO COM QUADRADO */}
+                    {/* HERO LOGO - CENTRALIZADO E GRANDE */}
                     <div className="flex justify-center mb-6">
-                        <div className="w-48 h-48 bg-white rounded-3xl shadow-xl border border-indigo-100 flex items-center justify-center rotate-3 hover:rotate-0 transition-transform duration-500">
-                            <div className="p-2">
-                                <NeuroLogo size={140} className="text-indigo-600" />
-                            </div>
+                        <div className="p-1 bg-gradient-to-br from-indigo-50 to-white rounded-[2rem] shadow-xl border border-indigo-100">
+                            <NeuroLogo size={100} className="text-indigo-600" />
                         </div>
                     </div>
                     
@@ -583,16 +580,15 @@ export function App() {
                 />
             )}
             
-            {/* Responsive Sidebar Container */}
-            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-50 transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
+            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
                 <Sidebar 
                     folders={folders} 
-                    studies={studies}
-                    activeStudyId={activeStudyId}
-                    onSelectStudy={setActiveStudyId}
-                    onCreateFolder={createFolder}
+                    studies={studies} 
+                    activeStudyId={activeStudyId} 
+                    onSelectStudy={setActiveStudyId} 
+                    onCreateFolder={createFolder} 
                     onRenameFolder={renameFolder}
-                    onCreateStudy={(fid, t) => createStudy(fid, t, StudyMode.NORMAL)} 
+                    onCreateStudy={createStudy}
                     onDeleteStudy={deleteStudy}
                     onDeleteFolder={deleteFolder}
                     onMoveFolder={moveFolder}
@@ -605,327 +601,269 @@ export function App() {
         </>
       )}
 
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {activeStudy && !isParetoStudy && (
-          <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-10 relative">
-            <div className="flex items-center gap-2 overflow-hidden mr-2">
-                <button 
-                    onClick={() => setIsMobileMenuOpen(true)}
-                    className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2"
-                >
-                    <Menu className="w-6 h-6"/>
-                </button>
-
-                {isEditingTitle ? (
-                    <div className="flex items-center gap-2">
-                        <input autoFocus value={editTitleInput} onChange={(e) => setEditTitleInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()} onBlur={handleSaveTitle} className="text-lg md:text-xl font-bold text-gray-800 border-b-2 border-indigo-500 outline-none px-1 w-full" />
-                        <button onClick={handleSaveTitle} className="text-green-600"><CheckCircle className="w-5 h-5"/></button>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2 group overflow-hidden">
-                        <h2 className="text-lg md:text-xl font-bold text-gray-800 truncate" title={activeStudy.title}>{activeStudy.title}</h2>
-                        <button onClick={() => { setIsEditingTitle(true); setEditTitleInput(activeStudy.title); }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity hidden md:block" title="Renomear Estudo"><Edit className="w-4 h-4"/></button>
-                        {activeStudy.mode === StudyMode.SURVIVAL && <span className="hidden md:inline-block ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded uppercase border border-green-200">Sobrevivência</span>}
-                        
-                        {/* SPACED REPETITION BUTTON */}
-                         <button 
-                            onClick={() => setShowReviewScheduler(true)}
-                            className={`ml-4 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${activeStudy.nextReviewDate && activeStudy.nextReviewDate > Date.now() ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                        >
-                            <Calendar className="w-3 h-3" />
-                            {activeStudy.nextReviewDate ? `Revisão: ${new Date(activeStudy.nextReviewDate).toLocaleDateString('pt-BR')}` : 'Agendar Revisão'}
-                        </button>
-
-                    </div>
-                )}
-            </div>
+        {/* Top Navigation */}
+        <header className="flex justify-between items-center p-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm z-10">
+          <div className="flex items-center gap-4">
+            <button className="md:hidden text-gray-600" onClick={() => setIsMobileMenuOpen(true)}>
+                <Menu className="w-6 h-6" />
+            </button>
             
-            <div className="flex items-center gap-2 md:gap-6">
-                <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto max-w-[200px] md:max-w-none no-scrollbar">
-                    <button onClick={() => setActiveTab('sources')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all ${activeTab === 'sources' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Fontes</button>
-                    <button onClick={() => setActiveTab('guide')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'guide' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><BookOpen className="w-3 h-3 md:w-4 md:h-4" /> Roteiro</button>
-                    <button onClick={() => setActiveTab('slides')} className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'slides' ? 'bg-white shadow text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}><Monitor className="w-3 h-3 md:w-4 md:h-4" /> Slides</button>
-                    
-                    {/* Locked Quiz Tab */}
-                    <button 
-                        onClick={() => isGuideComplete && setActiveTab('quiz')} 
-                        disabled={!isGuideComplete}
-                        className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'quiz' ? 'bg-white shadow text-indigo-700' : isGuideComplete ? 'text-gray-500 hover:text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
-                    >
-                        {isGuideComplete ? <HelpCircle className="w-3 h-3 md:w-4 md:h-4" /> : <Lock className="w-3 h-3 md:w-4 md:h-4" />} 
-                        Quiz
-                    </button>
-                    
-                    {/* Locked Flashcards Tab */}
-                    <button 
-                        onClick={() => isGuideComplete && setActiveTab('flashcards')} 
-                        disabled={!isGuideComplete}
-                        className={`whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'flashcards' ? 'bg-white shadow text-indigo-700' : isGuideComplete ? 'text-gray-500 hover:text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
-                    >
-                        {isGuideComplete ? <Layers className="w-3 h-3 md:w-4 md:h-4" /> : <Lock className="w-3 h-3 md:w-4 md:h-4" />} 
-                        Cards
-                    </button>
+            {activeStudy ? (
+                <div className="flex flex-col">
+                     <div className="flex items-center gap-2">
+                         {isEditingTitle ? (
+                             <input 
+                                autoFocus
+                                value={editTitleInput}
+                                onChange={(e) => setEditTitleInput(e.target.value)}
+                                onBlur={handleSaveTitle}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
+                                className="font-bold text-xl text-gray-900 border-b border-indigo-500 outline-none bg-transparent"
+                             />
+                         ) : (
+                             <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2 group cursor-pointer" onClick={() => { setEditTitleInput(activeStudy.title); setIsEditingTitle(true); }}>
+                                {activeStudy.title}
+                                <Edit className="w-4 h-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                             </h1>
+                         )}
+                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${activeStudy.mode === StudyMode.PARETO ? 'bg-red-50 text-red-600 border-red-100' : activeStudy.mode === StudyMode.HARD ? 'bg-purple-50 text-purple-600 border-purple-100' : activeStudy.mode === StudyMode.SURVIVAL ? 'bg-green-50 text-green-600 border-green-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                             {activeStudy.mode === StudyMode.PARETO ? 'Pareto 80/20' : activeStudy.mode}
+                         </span>
+                     </div>
+                     <p className="text-xs text-gray-500">Atualizado em {new Date(activeStudy.updatedAt).toLocaleDateString()}</p>
                 </div>
-
-                {/* NOTIFICATION BELL */}
-                <div className="relative">
-                    <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors relative">
+            ) : (
+                <h1 className="text-xl font-bold text-gray-400 flex items-center gap-2">
+                    <NeuroLogo size={24} className="grayscale opacity-50"/>
+                    Selecione ou crie um estudo
+                </h1>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-3">
+             {activeStudy && (
+                 <>
+                    <button 
+                        className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        title="Notificações de Revisão"
+                    >
                         <Bell className="w-5 h-5"/>
-                        {dueReviewsCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>}
+                        {dueReviewsCount > 0 && (
+                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                        )}
                     </button>
+                    
+                    {/* Render Notification Center Dropdown */}
                     {showNotifications && (
                         <>
-                         <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-                         <NotificationCenter studies={studies} onSelectStudy={setActiveStudyId} onClose={() => setShowNotifications(false)} />
+                            <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
+                            <NotificationCenter 
+                                studies={studies} 
+                                onSelectStudy={setActiveStudyId} 
+                                onClose={() => setShowNotifications(false)} 
+                            />
+                        </>
+                    )}
+
+                    <button 
+                        onClick={() => setShowReviewScheduler(true)}
+                        className="flex items-center gap-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+                    >
+                        <Calendar className="w-4 h-4"/>
+                        Agendar Revisão
+                    </button>
+                 </>
+             )}
+          </div>
+        </header>
+
+        {/* Workspace */}
+        <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 scroll-smooth">
+          {activeStudy ? (
+            <div className="max-w-5xl mx-auto space-y-6">
+                
+                {/* TABS NAVIGATION */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    <button onClick={() => setActiveTab('sources')} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'sources' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700'}`}>
+                        <UploadCloud className="w-4 h-4"/> Fontes
+                    </button>
+                    
+                    <button onClick={() => setActiveTab('guide')} disabled={!activeStudy.guide} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'guide' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>
+                        <FileText className="w-4 h-4"/> Roteiro
+                    </button>
+
+                    {!isParetoStudy && (
+                        <>
+                            <button onClick={() => setActiveTab('slides')} disabled={!activeStudy.slides} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'slides' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>
+                                <Monitor className="w-4 h-4"/> Slides
+                            </button>
+                            <button onClick={() => setActiveTab('quiz')} disabled={!activeStudy.quiz && !isGuideComplete} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'quiz' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>
+                                {isGuideComplete || activeStudy.quiz ? <CheckCircle className="w-4 h-4"/> : <Lock className="w-4 h-4"/>} Quiz
+                            </button>
+                            <button onClick={() => setActiveTab('flashcards')} disabled={!activeStudy.flashcards && !isGuideComplete} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'flashcards' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>
+                                {isGuideComplete || activeStudy.flashcards ? <Layers className="w-4 h-4"/> : <Lock className="w-4 h-4"/>} Flashcards
+                            </button>
                         </>
                     )}
                 </div>
-            </div>
-          </header>
-        )}
 
-        {/* UPDATED: Added bottom padding pb-32 to prevent floating elements from covering content on mobile */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-8 pb-32 scroll-smooth relative">
-            {!activeStudy ? (
-                <div className="h-full flex flex-col items-center justify-center max-w-6xl mx-auto relative">
-                     {/* NOTIFICATION BELL FOR HOME SCREEN */}
-                    {!isParetoStudy && (
-                        <div className="absolute top-4 right-4 md:top-8 md:right-8 z-20">
-                            <div className="relative">
-                                <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 bg-white text-gray-500 hover:text-indigo-600 shadow-sm border border-gray-200 hover:border-indigo-200 rounded-full transition-colors relative">
-                                    <Bell className="w-6 h-6"/>
-                                    {dueReviewsCount > 0 && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white animate-pulse"></span>}
-                                </button>
-                                {showNotifications && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-                                        <NotificationCenter studies={studies} onSelectStudy={setActiveStudyId} onClose={() => setShowNotifications(false)} />
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {quickInputMode === 'none' ? (
-                      <>
-                        <div className="text-center mb-8 md:mb-10 mt-8 md:mt-0">
-                            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">O que você vai <span className="text-indigo-600">aprender</span> hoje?</h1>
-                            <p className="text-sm md:text-lg text-gray-500 max-w-xl mx-auto px-4">Transforme qualquer conteúdo em conhecimento ativo instantaneamente. Escolha uma fonte para começar.</p>
-                        </div>
-
-                         <div className="flex justify-center gap-2 md:gap-4 mb-8 flex-wrap">
-                            {[StudyMode.SURVIVAL, StudyMode.NORMAL, StudyMode.HARD].map(mode => (
-                                <button key={mode} onClick={() => setSelectedMode(mode)} className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-full border transition-all ${selectedMode === mode ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                                    {mode === StudyMode.SURVIVAL && <BatteryCharging className="w-3 h-3 md:w-4 md:h-4" />}
-                                    {mode === StudyMode.NORMAL && <Activity className="w-3 h-3 md:w-4 md:h-4" />}
-                                    {mode === StudyMode.HARD && <Rocket className="w-3 h-3 md:w-4 md:h-4" />}
-                                    <span className="text-xs md:text-sm font-bold capitalize">{mode === StudyMode.SURVIVAL ? 'Sobrevivência' : mode === StudyMode.HARD ? 'Hard' : mode}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 w-full px-2 md:px-4 pb-20">
-                            <label className="group relative flex flex-col items-center justify-center p-4 md:p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-red-500 origin-left scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                                <div className="p-2 md:p-3 bg-red-50 rounded-full text-red-600 mb-2 md:mb-3 group-hover:bg-red-600 group-hover:text-white transition-colors"><FileText className="w-5 h-5 md:w-6 md:h-6" /></div>
-                                <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Estudar PDF</h3>
-                                <p className="text-[10px] md:text-xs text-gray-500 text-center">Livros e slides.</p>
-                                <input type="file" accept=".pdf" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if(file) handleQuickStart(file, InputType.PDF, selectedMode); }} />
-                            </label>
-
-                            <label className="group relative flex flex-col items-center justify-center p-4 md:p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-blue-500 origin-left scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                                <div className="p-2 md:p-3 bg-blue-50 rounded-full text-blue-600 mb-2 md:mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors"><Video className="w-5 h-5 md:w-6 md:h-6" /></div>
-                                <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Vídeo/Áudio</h3>
-                                <p className="text-[10px] md:text-xs text-gray-500 text-center">Transcrever aula.</p>
-                                <input type="file" accept="video/*,audio/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if(file) handleQuickStart(file, InputType.VIDEO, selectedMode); }} />
-                            </label>
-
-                            <label className="group relative flex flex-col items-center justify-center p-4 md:p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-pink-500 origin-left scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                                <div className="p-2 md:p-3 bg-pink-50 rounded-full text-pink-600 mb-2 md:mb-3 group-hover:bg-pink-600 group-hover:text-white transition-colors"><Camera className="w-5 h-5 md:w-6 md:h-6" /></div>
-                                <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Foto Caderno</h3>
-                                <p className="text-[10px] md:text-xs text-gray-500 text-center">Anotações/Livros.</p>
-                                <input type="file" accept="image/png, image/jpeg, image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if(file) handleQuickStart(file, InputType.IMAGE, selectedMode); }} />
-                            </label>
-
-                            <button onClick={() => { setInputType(InputType.TEXT); setQuickInputMode('text'); }} className="group relative flex flex-col items-center justify-center p-4 md:p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-amber-500 origin-left scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                                <div className="p-2 md:p-3 bg-amber-50 rounded-full text-amber-600 mb-2 md:mb-3 group-hover:bg-amber-600 group-hover:text-white transition-colors"><Zap className="w-5 h-5 md:w-6 md:h-6" /></div>
-                                <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Colar Texto</h3>
-                                <p className="text-[10px] md:text-xs text-gray-500 text-center">Resumos e notas.</p>
-                            </button>
-
-                             <button onClick={() => { setInputType(InputType.URL); setQuickInputMode('text'); }} className="group relative flex flex-col items-center justify-center p-4 md:p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-cyan-500 origin-left scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                                <div className="p-2 md:p-3 bg-cyan-50 rounded-full text-cyan-600 mb-2 md:mb-3 group-hover:bg-cyan-600 group-hover:text-white transition-colors"><Globe className="w-5 h-5 md:w-6 md:h-6" /></div>
-                                <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Estudar Site</h3>
-                                <p className="text-[10px] md:text-xs text-gray-500 text-center">Links e Blogs.</p>
-                            </button>
-
-                             <button onClick={() => { setInputType(InputType.DOI); setQuickInputMode('text'); }} className="group relative flex flex-col items-center justify-center p-4 md:p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 origin-left scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                                <div className="p-2 md:p-3 bg-emerald-50 rounded-full text-emerald-600 mb-2 md:mb-3 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Link className="w-5 h-5 md:w-6 md:h-6" /></div>
-                                <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">Artigo DOI</h3>
-                                <p className="text-[10px] md:text-xs text-gray-500 text-center">Busca científica.</p>
-                            </button>
-                        </div>
-
-                        <div className="mt-8 flex items-center gap-2 text-gray-400 text-xs md:text-sm hidden md:flex">
-                            <BrainCircuit className="w-4 h-4" />
-                            <span>Suas pastas recentes estão na barra lateral à esquerda.</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="w-full max-w-2xl animate-fade-in px-4">
-                          <div className="flex items-center justify-between mb-4">
-                             <h2 className="text-xl md:text-2xl font-bold text-gray-800">{inputType === InputType.DOI ? 'Colar DOI do Artigo' : inputType === InputType.URL ? 'Colar Link do Site' : 'Colar Texto para Estudo'}</h2>
-                             <button onClick={() => setQuickInputMode('none')} className="text-gray-500 hover:text-gray-700 text-sm">Cancelar</button>
-                          </div>
-                          <textarea autoFocus className="w-full h-48 md:h-64 p-4 md:p-6 border border-gray-300 rounded-xl shadow-inner text-base md:text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none mb-4" placeholder={inputType === InputType.DOI ? "Ex: 10.1038/s41586-020-2012-7" : inputType === InputType.URL ? "Ex: https://pt.wikipedia.org/wiki/Neurociência" : "Cole o conteúdo aqui..."} value={inputText} onChange={(e) => setInputText(e.target.value)}></textarea>
-                          <button onClick={() => handleQuickStart(inputText, inputType, selectedMode)} disabled={!inputText.trim()} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 disabled:opacity-50 transition-all active:scale-[0.99] flex items-center justify-center gap-2">
-                             {selectedMode === StudyMode.HARD && <Rocket className="w-5 h-5" />}
-                             {selectedMode === StudyMode.NORMAL && <Activity className="w-5 h-5" />}
-                             {selectedMode === StudyMode.SURVIVAL && <BatteryCharging className="w-5 h-5" />}
-                             Iniciar Estudo ({selectedMode === StudyMode.SURVIVAL ? 'Sobrevivência' : selectedMode === StudyMode.HARD ? 'Hard' : selectedMode})
-                          </button>
-                      </div>
-                    )}
-                </div>
-            ) : (
-                <div className="max-w-5xl mx-auto">
-                    {activeTab === 'sources' && !isParetoStudy && (
-                        <div className="space-y-8 animate-fade-in">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="bg-white p-6 rounded-xl paper-shadow border border-gray-100">
-                                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><UploadCloud className="w-5 h-5 text-indigo-500"/> Adicionar Fonte</h3>
-                                    <div className="space-y-4">
-                                        <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto no-scrollbar">
-                                            <button onClick={() => setInputType(InputType.TEXT)} className={`flex-1 min-w-[60px] py-1.5 text-xs font-medium rounded ${inputType === InputType.TEXT ? 'bg-white shadow text-indigo-700' : 'text-gray-500'}`}>Texto</button>
-                                            <button onClick={() => setInputType(InputType.PDF)} className={`flex-1 min-w-[60px] py-1.5 text-xs font-medium rounded ${inputType === InputType.PDF ? 'bg-white shadow text-indigo-700' : 'text-gray-500'}`}>PDF</button>
-                                            <button onClick={() => setInputType(InputType.IMAGE)} className={`flex-1 min-w-[60px] py-1.5 text-xs font-medium rounded ${inputType === InputType.IMAGE ? 'bg-white shadow text-indigo-700' : 'text-gray-500'}`}>Imagem</button>
-                                            <button onClick={() => setInputType(InputType.VIDEO)} className={`flex-1 min-w-[60px] py-1.5 text-xs font-medium rounded ${inputType === InputType.VIDEO ? 'bg-white shadow text-indigo-700' : 'text-gray-500'}`}>Vídeo</button>
-                                            <button onClick={() => setInputType(InputType.URL)} className={`flex-1 min-w-[60px] py-1.5 text-xs font-medium rounded ${inputType === InputType.URL ? 'bg-white shadow text-indigo-700' : 'text-gray-500'}`}>Site</button>
-                                            <button onClick={() => setInputType(InputType.DOI)} className={`flex-1 min-w-[60px] py-1.5 text-xs font-medium rounded ${inputType === InputType.DOI ? 'bg-white shadow text-indigo-700' : 'text-gray-500'}`}>DOI</button>
-                                        </div>
-                                        {inputType === InputType.TEXT || inputType === InputType.DOI || inputType === InputType.URL ? (
-                                            <textarea className="w-full h-32 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder={inputType === InputType.DOI ? "Cole o DOI aqui..." : inputType === InputType.URL ? "Cole o link do site aqui..." : "Cole seu texto..."} value={inputText} onChange={(e) => setInputText(e.target.value)} />
-                                        ) : (
-                                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                    <UploadCloud className="w-8 h-8 text-gray-400 mb-2" />
-                                                    <p className="text-sm text-gray-500">{selectedFile ? selectedFile.name : inputType === InputType.IMAGE ? "Upload de Imagem (JPG, PNG)" : inputType === InputType.VIDEO ? "Upload de Vídeo/Áudio" : "Upload de PDF"}</p>
-                                                </div>
-                                                <input type="file" className="hidden" accept={inputType === InputType.VIDEO ? "video/*,audio/*" : inputType === InputType.IMAGE ? "image/png, image/jpeg, image/webp" : ".pdf"} onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                                            </label>
-                                        )}
-                                        <button onClick={addSourceToStudy} disabled={(!inputText && !selectedFile)} className="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors">Adicionar ao Estudo</button>
-                                    </div>
+                {/* CONTENT AREA */}
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    
+                    {/* VIEW: SOURCES */}
+                    {activeTab === 'sources' && (
+                        <div className="space-y-6">
+                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><UploadCloud className="w-5 h-5 text-indigo-500"/> Adicionar Conteúdo</h2>
+                                
+                                <div className="flex gap-2 mb-4 bg-gray-50 p-1 rounded-lg w-fit">
+                                    <button onClick={() => setInputType(InputType.TEXT)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.TEXT ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Texto</button>
+                                    <button onClick={() => setInputType(InputType.PDF)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.PDF ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>PDF</button>
+                                    <button onClick={() => setInputType(InputType.VIDEO)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.VIDEO ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Vídeo</button>
+                                    <button onClick={() => setInputType(InputType.IMAGE)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.IMAGE ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Imagem</button>
+                                    <button onClick={() => setInputType(InputType.URL)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.URL ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Link</button>
                                 </div>
-                                <div className="bg-white p-6 rounded-xl paper-shadow border border-gray-100">
-                                    <h3 className="font-bold text-gray-800 mb-4">Fontes Adicionadas ({activeStudy.sources.length})</h3>
-                                    {activeStudy.sources.length === 0 ? (
-                                        <p className="text-sm text-gray-400 italic">Nenhuma fonte adicionada.</p>
+
+                                <div className="space-y-4">
+                                    {inputType === InputType.TEXT || inputType === InputType.DOI || inputType === InputType.URL ? (
+                                        <textarea
+                                            value={inputText}
+                                            onChange={(e) => setInputText(e.target.value)}
+                                            className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                            placeholder={inputType === InputType.URL ? "Cole o link aqui..." : "Cole seu texto ou anotações aqui..."}
+                                        />
                                     ) : (
-                                        <ul className="space-y-2 max-h-64 overflow-y-auto">
-                                            {activeStudy.sources.map(source => (
-                                                <li key={source.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 group">
-                                                    <div className="flex items-center gap-3 overflow-hidden">
-                                                        {source.type === InputType.PDF ? <FileText className="w-4 h-4 text-red-500"/> : source.type === InputType.VIDEO ? <Video className="w-4 h-4 text-blue-500"/> : source.type === InputType.IMAGE ? <Camera className="w-4 h-4 text-pink-500"/> : source.type === InputType.DOI ? <Link className="w-4 h-4 text-emerald-500"/> : source.type === InputType.URL ? <Globe className="w-4 h-4 text-cyan-500"/> : <FileText className="w-4 h-4 text-gray-500"/>}
-                                                        <span className="text-sm text-gray-700 truncate max-w-[150px]">{source.name}</span>
-                                                    </div>
-                                                    <button onClick={() => removeSource(source.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash className="w-4 h-4" /></button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            </div>
-                            <div className={`border p-6 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${activeStudy.mode === StudyMode.SURVIVAL ? 'bg-green-50 border-green-100' : activeStudy.mode === StudyMode.HARD ? 'bg-purple-50 border-purple-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                                <div>
-                                    <h3 className={`font-bold text-lg ${activeStudy.mode === StudyMode.SURVIVAL ? 'text-green-900' : activeStudy.mode === StudyMode.HARD ? 'text-purple-900' : 'text-indigo-900'}`}>{activeStudy.mode === StudyMode.SURVIVAL ? 'Modo Sobrevivência' : activeStudy.mode === StudyMode.HARD ? 'Modo Hard' : 'Pronto para transformar?'}</h3>
-                                    <p className={`text-sm ${activeStudy.mode === StudyMode.SURVIVAL ? 'text-green-700' : activeStudy.mode === StudyMode.HARD ? 'text-purple-700' : 'text-indigo-700'}`}>{activeStudy.mode === StudyMode.SURVIVAL ? 'Gera um guia focado e curto.' : activeStudy.mode === StudyMode.HARD ? 'Análise detalhada e granular.' : 'O NeuroStudy vai criar o roteiro perfeito.'}</p>
-                                </div>
-                                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
-                                        <span className="text-xs font-bold text-gray-500 uppercase">Modo:</span>
-                                        <div className="flex gap-1">
-                                            <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.SURVIVAL)} className={`p-1.5 rounded transition-colors ${activeStudy.mode === StudyMode.SURVIVAL ? 'bg-green-100 text-green-700 ring-2 ring-green-500 ring-offset-1' : 'hover:bg-gray-100 text-gray-400'}`} title="Sobrevivência"><BatteryCharging className="w-4 h-4"/></button>
-                                            <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.NORMAL)} className={`p-1.5 rounded transition-colors ${activeStudy.mode === StudyMode.NORMAL ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500 ring-offset-1' : 'hover:bg-gray-100 text-gray-400'}`} title="Normal (Equilibrado)"><Activity className="w-4 h-4"/></button>
-                                            <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.HARD)} className={`p-1.5 rounded transition-colors ${activeStudy.mode === StudyMode.HARD ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-500 ring-offset-1' : 'hover:bg-gray-100 text-gray-400'}`} title="Hard (Completo)"><Rocket className="w-4 h-4"/></button>
+                                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
+                                            <input 
+                                                type="file" 
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                                accept={inputType === InputType.PDF ? ".pdf" : inputType === InputType.VIDEO ? "video/*,audio/*" : "image/*"}
+                                            />
+                                            <div className="flex flex-col items-center gap-2 text-gray-500">
+                                                {selectedFile ? (
+                                                    <>
+                                                        <FileText className="w-8 h-8 text-indigo-500"/>
+                                                        <span className="font-medium text-gray-900">{selectedFile.name}</span>
+                                                        <span className="text-xs">Clique para trocar</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <UploadCloud className="w-8 h-8"/>
+                                                        <span className="font-medium">Clique ou arraste o arquivo aqui</span>
+                                                        <span className="text-xs">Suporta {inputType === InputType.PDF ? 'PDFs' : inputType === InputType.VIDEO ? 'Vídeo/Áudio' : 'Imagens'}</span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <button onClick={handleGenerateGuide} disabled={activeStudy.sources.length === 0 || processingState.isLoading} className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-transform active:scale-[0.99] ${activeStudy.mode === StudyMode.SURVIVAL ? 'bg-green-600 hover:bg-green-700 shadow-green-200' : activeStudy.mode === StudyMode.HARD ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}>
-                                        {processingState.isLoading ? (<><span className="animate-spin text-white">⚙️</span> Processando...</>) : (<><GenerateIcon className="w-5 h-5" /> Gerar Roteiro</>)}
+                                    )}
+
+                                    <button 
+                                        onClick={addSourceToStudy}
+                                        disabled={(!inputText && !selectedFile)}
+                                        className="bg-gray-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Adicionar à Lista
                                     </button>
                                 </div>
                             </div>
+
+                            {activeStudy.sources.length > 0 && (
+                                <div className="space-y-4">
+                                    {activeStudy.sources.map((source, idx) => (
+                                        <div key={source.id} className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm animate-in slide-in-from-top-2">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">
+                                                    {idx + 1}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800">{source.name}</h3>
+                                                    <span className="text-xs text-gray-500 uppercase tracking-wider font-bold">{source.type} • {new Date(source.dateAdded).toLocaleTimeString()}</span>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => removeSource(source.id)} className="text-gray-400 hover:text-red-500 p-2"><Trash className="w-5 h-5"/></button>
+                                        </div>
+                                    ))}
+
+                                    <div className="flex justify-end pt-4">
+                                        <button 
+                                            onClick={handleGenerateGuide}
+                                            className="group relative bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-indigo-200 hover:-translate-y-1 transition-all flex items-center gap-3 overflow-hidden"
+                                        >
+                                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                                            <Brain className="w-6 h-6 animate-pulse"/>
+                                            <span className="relative">Gerar Roteiro NeuroStudy</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {(activeTab === 'guide' || isParetoStudy) && (
-                        activeStudy.guide || processingState.isLoading ? (
-                            processingState.isLoading ? (
-                                <ProcessingStatus step={processingState.step} type="guide" />
-                            ) : activeStudy.guide ? (
-                                <ResultsView 
-                                    guide={activeStudy.guide} 
-                                    onReset={() => { 
-                                        if(isParetoStudy) {
-                                            handleGoToHome();
-                                        } else {
-                                            setActiveTab('sources'); 
-                                        }
-                                    }}
-                                    onGenerateQuiz={() => setActiveTab('quiz')}
-                                    onUpdateGuide={(newGuide) => activeStudyId && updateStudyGuide(activeStudyId, newGuide)}
-                                    isParetoOnly={isParetoStudy}
+                    {/* VIEW: PROCESSING */}
+                    {processingState.isLoading && (
+                        <div className="flex items-center justify-center h-96">
+                            <ProcessingStatus step={processingState.step} />
+                        </div>
+                    )}
+
+                    {/* VIEW: GUIDE */}
+                    {activeTab === 'guide' && !processingState.isLoading && activeStudy.guide && (
+                        <ResultsView 
+                            guide={activeStudy.guide} 
+                            onReset={() => setActiveTab('sources')}
+                            onGenerateQuiz={() => setActiveTab('quiz')}
+                            onUpdateGuide={(g) => updateStudyGuide(activeStudy.id, g)}
+                            isParetoOnly={activeStudy.mode === StudyMode.PARETO}
+                        />
+                    )}
+
+                    {/* VIEW: SLIDES */}
+                    {activeTab === 'slides' && !processingState.isLoading && (
+                        <div className="space-y-6">
+                            {activeStudy.slides ? (
+                                <SlidesView slides={activeStudy.slides} />
+                            ) : (
+                                <div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed">
+                                    <Monitor className="w-16 h-16 text-gray-300 mx-auto mb-4"/>
+                                    <h3 className="text-xl font-bold text-gray-700 mb-2">Slides de Aula</h3>
+                                    <p className="text-gray-500 mb-6 max-w-md mx-auto">Transforme o roteiro em uma apresentação estruturada para ensinar o conteúdo (Técnica Feynman).</p>
+                                    <button onClick={handleGenerateSlides} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors">Gerar Slides com IA</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* VIEW: QUIZ */}
+                    {activeTab === 'quiz' && !processingState.isLoading && (
+                         <div className="space-y-6">
+                            {activeStudy.quiz ? (
+                                <QuizView 
+                                    questions={activeStudy.quiz} 
+                                    onGenerate={handleGenerateQuiz}
+                                    onClear={handleClearQuiz}
                                 />
-                            ) : null
-                        ) : (
-                            !isParetoStudy && (<div className="text-center py-20 text-gray-400"><p>Nenhum roteiro gerado ainda. Adicione fontes e clique em Gerar.</p></div>)
-                        )
+                            ) : (
+                                <div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed">
+                                    <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4"/>
+                                    <h3 className="text-xl font-bold text-gray-700 mb-2">Quiz de Recuperação Ativa</h3>
+                                    <p className="text-gray-500 mb-6 max-w-md mx-auto">Teste seu conhecimento para fortalecer as conexões neurais. Perguntas mistas de múltipla escolha e dissertativas.</p>
+                                    
+                                    {isGuideComplete ? (
+                                        <button onClick={() => handleGenerateQuiz()} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors">Gerar Quiz</button>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold border border-yellow-200">
+                                            <Lock className="w-4 h-4"/> Complete todos os checkpoints para liberar
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     )}
 
-                    {activeTab === 'slides' && !isParetoStudy && (
-                         <div className="animate-fade-in">
-                            {processingState.isLoading && processingState.step === 'slides' ? (
-                                <ProcessingStatus step="slides" type="slides" />
-                            ) : activeStudy.slides ? (<SlidesView slides={activeStudy.slides} />) : (<div className="flex flex-col items-center justify-center py-20 text-center"><Monitor className="w-16 h-16 text-gray-200 mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Slides de Aula</h3><p className="text-gray-500 mb-6 max-w-md">Gere uma apresentação estruturada pronta para usar ou revisar, baseada no seu roteiro.</p><button onClick={handleGenerateSlides} disabled={!activeStudy.guide || processingState.isLoading} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50">{processingState.isLoading ? 'Criando Slides...' : 'Gerar Slides Agora'}</button></div>)}
-                         </div>
-                    )}
-
-                    {activeTab === 'quiz' && !isParetoStudy && (
-                         <div className="animate-fade-in">
-                            {processingState.isLoading && processingState.step === 'quiz' ? (
-                                <ProcessingStatus step="quiz" type="quiz" />
-                            ) : QuizView && <QuizView questions={activeStudy.quiz || []} onGenerate={handleGenerateQuiz} onClear={handleClearQuiz} />}
-                         </div>
-                    )}
-
-                    {activeTab === 'flashcards' && !isParetoStudy && (
-                         <div className="animate-fade-in">
-                            {processingState.isLoading && processingState.step === 'flashcards' ? (
-                                <ProcessingStatus step="flashcards" type="flashcards" />
-                            ) : FlashcardsView && <FlashcardsView cards={activeStudy.flashcards || []} onGenerate={handleGenerateFlashcards} />}
-                         </div>
-                    )}
-                </div>
-            )}
-        </main>
-      </div>
-
-      {!isParetoStudy && <ChatWidget studyGuide={activeStudy?.guide || null} />}
-      {!isParetoStudy && activeStudy?.guide && <PomodoroTimer />}
-      {showMethodologyModal && <MethodologyModal onClose={() => setShowMethodologyModal(false)} />}
-      
-      {showReviewScheduler && activeStudy && (
-          <ReviewSchedulerModal 
-            studyTitle={activeStudy.title}
-            onSchedule={handleScheduleReview}
-            onClose={() => setShowReviewScheduler(false)}
-          />
-      )}
-    </div>
-  );
-}
+                    {/* VIEW: FLASHCARDS */}
+                    {activeTab === 'flashcards' && !processingState.isLoading && (
+                        <div className="

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Folder, StudySession } from '../types';
-import { FolderIcon, Plus, FileText, ChevronRight, ChevronDown, Trash, X, Edit, CornerDownRight, GraduationCap, NeuroLogo } from './Icons';
+import { FolderIcon, Plus, FileText, ChevronRight, ChevronDown, Trash, X, Edit, CornerDownRight, GraduationCap, NeuroLogo, Search } from './Icons';
 
 interface SidebarProps {
   folders: Folder[];
@@ -48,6 +48,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const [isCreatingRootFolder, setIsCreatingRootFolder] = useState(false);
   const [newRootFolderName, setNewRootFolderName] = useState('');
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Drag and Drop State
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
@@ -125,6 +128,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onMoveStudy(id, finalTarget);
     }
   };
+
+  // --- Search Logic ---
+  const filteredStudies = searchQuery 
+    ? studies.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
+  
+  const filteredFolders = searchQuery
+    ? folders.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
 
 
   // Recursive component for rendering folder tree
@@ -319,8 +331,68 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {dragOverHeader && <p className="text-xs text-indigo-500 mt-1">Soltar para mover para Raiz</p>}
       </div>
 
+      {/* Search Bar */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"/>
+            <input 
+                type="text" 
+                placeholder="Buscar..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+            />
+            {searchQuery && (
+                <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+                >
+                    <X className="w-3 h-3" />
+                </button>
+            )}
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
-        {renderFolderTree(undefined)}
+        {searchQuery ? (
+            <div className="space-y-4 px-2 animate-in fade-in slide-in-from-top-2">
+                {filteredStudies.length === 0 && filteredFolders.length === 0 && (
+                    <div className="text-center mt-8">
+                        <Search className="w-8 h-8 text-gray-300 mx-auto mb-2"/>
+                        <p className="text-xs text-gray-400">Nenhum resultado encontrado.</p>
+                    </div>
+                )}
+
+                {filteredFolders.length > 0 && (
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Pastas</p>
+                        {filteredFolders.map(f => (
+                            <div key={f.id} className="flex items-center gap-2 p-2 rounded hover:bg-gray-200 text-gray-700 text-sm cursor-pointer transition-colors" onClick={() => {
+                                setSearchQuery('');
+                                setExpandedFolders(prev => ({...prev, [f.id]: true})); 
+                            }}>
+                                <FolderIcon className="w-4 h-4 text-yellow-500"/>
+                                <span>{f.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {filteredStudies.length > 0 && (
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Estudos</p>
+                        {filteredStudies.map(s => (
+                            <div key={s.id} onClick={() => { onSelectStudy(s.id); }} className="flex items-center gap-2 p-2 rounded hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 text-sm cursor-pointer transition-colors border border-transparent hover:border-indigo-100">
+                                <FileText className="w-4 h-4 text-indigo-500"/>
+                                <span className="truncate">{s.title}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        ) : (
+            renderFolderTree(undefined)
+        )}
       </div>
 
       <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-3">
