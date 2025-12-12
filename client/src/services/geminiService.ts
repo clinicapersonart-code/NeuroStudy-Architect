@@ -206,7 +206,25 @@ export const refineContent = async (text: string, task: string): Promise<string>
     const apiKey = getApiKey();
     if (!apiKey) return "Erro de API Key.";
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ text: `Refine este conteúdo com a tarefa (${task}): "${text}"` }] } });
+    
+    // Explicitly enforce Brazilian Portuguese
+    const prompt = `
+    Atue como um professor brasileiro experiente e criativo.
+    
+    SUA MISSÃO: Refinar o seguinte conteúdo realizando esta tarefa: "${task}".
+    CONTEÚDO ORIGINAL: "${text}"
+
+    REGRAS OBRIGATÓRIAS:
+    1. A resposta deve ser EXCLUSIVAMENTE em PORTUGUÊS DO BRASIL (pt-BR). Não use inglês.
+    2. Se a tarefa for criar uma piada ("joke"), use humor culturalmente relevante para brasileiros, se possível.
+    3. Se for mnemônico, crie algo fácil de lembrar em português.
+    4. Seja direto: entregue apenas o resultado refinado, sem introduções como "Aqui está".
+    `;
+
+    const response = await ai.models.generateContent({ 
+        model: 'gemini-2.5-flash', 
+        contents: { parts: [{ text: prompt }] } 
+    });
     return response.text || "";
 };
 

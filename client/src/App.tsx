@@ -494,10 +494,12 @@ export function App() {
                 <div className="space-y-4">
                     <span className="inline-block py-1 px-3 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-widest border border-indigo-100">Neurociência Aplicada</span>
                     
-                    {/* HERO LOGO - CENTRALIZADO E GRANDE */}
+                    {/* HERO LOGO - CENTRALIZADO COM QUADRADO */}
                     <div className="flex justify-center mb-6">
-                        <div className="p-1 bg-gradient-to-br from-indigo-50 to-white rounded-[2rem] shadow-xl border border-indigo-100">
-                            <NeuroLogo size={100} className="text-indigo-600" />
+                        <div className="w-48 h-48 bg-white rounded-3xl shadow-xl border border-indigo-100 flex items-center justify-center rotate-3 hover:rotate-0 transition-transform duration-500">
+                            <div className="p-2">
+                                <NeuroLogo size={140} className="text-indigo-600" />
+                            </div>
                         </div>
                     </div>
                     
@@ -680,17 +682,6 @@ export function App() {
                 </div>
             </div>
           </header>
-        )}
-
-        {isParetoStudy && activeStudy && (
-            <header className="h-16 border-b border-red-100 bg-red-50 flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-10">
-                <div className="flex items-center gap-3">
-                    <button onClick={handleGoToHome} className="p-1 hover:bg-red-100 rounded-full text-red-700" title="Voltar"><ChevronRight className="w-5 h-5 rotate-180"/></button>
-                    <Target className="w-6 h-6 text-red-600 hidden md:block"/>
-                    <h2 className="text-lg md:text-xl font-bold text-red-800 truncate">Pareto 80/20</h2>
-                </div>
-                <div className="flex items-center gap-2"><span className="text-[10px] md:text-xs text-red-600 uppercase font-bold tracking-wider">Modo Simplificado</span></div>
-            </header>
         )}
 
         {/* UPDATED: Added bottom padding pb-32 to prevent floating elements from covering content on mobile */}
