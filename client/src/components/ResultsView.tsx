@@ -7,7 +7,7 @@ interface ResultsViewProps {
   guide: StudyGuide;
   onReset: () => void;
   onGenerateQuiz: () => void;
-  onGoToFlashcards?: () => void; // Nova prop opcional
+  onGoToFlashcards?: () => void;
   onUpdateGuide?: (newGuide: StudyGuide) => void;
   isParetoOnly?: boolean;
 }
@@ -109,7 +109,8 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    const worker = (window as any).html2pdf();
+    // @ts-ignore
+    const worker = window.html2pdf();
     worker.set(opt).from(element).save().then(() => {
         element.classList.remove('pdf-export');
         setIsGeneratingPDF(false);
@@ -194,7 +195,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
     ));
   };
 
-  // --- RENDERIZAÇÃO DE CAPÍTULOS (NOVO) ---
   const renderChapter = (chapter: BookChapter, index: number) => {
       const isExpanded = expandedChapters[index];
       
@@ -215,13 +215,11 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
 
               {isExpanded && (
                   <div className="p-6 border-t border-gray-100 space-y-6">
-                      {/* Resumo do Capítulo */}
                       <div className="prose prose-sm max-w-none text-gray-600">
                           <h5 className="font-bold text-gray-800 flex items-center gap-2 mb-2"><BookOpen className="w-4 h-4"/> Resumo</h5>
                           {renderMarkdownText(chapter.summary)}
                       </div>
 
-                      {/* Conceitos Core do Capítulo */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {chapter.coreConcepts.map((conc, idx) => (
                               <div key={idx} className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
@@ -231,7 +229,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                           ))}
                       </div>
 
-                      {/* Aplicação Prática */}
                       {chapter.practicalApplication && (
                           <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
                               <h5 className="font-bold text-emerald-900 flex items-center gap-2 mb-2"><Target className="w-4 h-4"/> Aplicação Prática</h5>
@@ -239,7 +236,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                           </div>
                       )}
 
-                      {/* Seções (Modo Turbo) */}
                       {chapter.sections && chapter.sections.length > 0 && (
                           <div className="space-y-4 pt-4 border-t border-gray-100">
                               <h5 className="font-bold text-gray-400 text-xs uppercase tracking-wider">Seções Detalhadas</h5>
@@ -264,7 +260,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
       
-      {/* Header Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 no-print">
         <button onClick={onReset} className="text-sm text-gray-500 hover:text-indigo-600 underline font-medium">
           ← {isParetoOnly ? 'Analisar outro arquivo' : 'Criar novo roteiro'}
@@ -277,7 +272,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
       </div>
 
       <div id="printable-guide">
-        {/* Header do Guia */}
         <div className={`bg-white rounded-xl paper-shadow p-8 border-t-4 ${isParetoOnly ? 'border-red-500' : 'border-indigo-500'} print:shadow-none print:border-0 print:border-t-0 print:mb-6`}>
             <div className="flex justify-between items-start mb-4"><h2 className="text-3xl font-serif font-bold text-gray-900">{guide.subject}</h2></div>
             
@@ -296,9 +290,8 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                 )}
             </div>
 
-            {/* Conceitos Globais (Sobrevivência ou Intro) */}
             {guide.coreConcepts.length > 0 && (
-                <div className="mb-8">
+                <div>
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <Target className={`w-6 h-6 ${isParetoOnly ? 'text-red-500' : 'text-indigo-500'} print:text-black`} />
                         {isParetoOnly ? 'Conceitos Chave (O 20%)' : 'Conceitos Fundamentais'}
@@ -325,7 +318,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                         </div>
                                     </div>
 
-                                    {/* TOOLBAR EXPANDABLE */}
                                     {isActive && !loadingMagic && !hasResult && (
                                         <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 animate-in slide-in-from-top-2 fade-in duration-200">
                                             <div className="text-[10px] uppercase font-bold text-indigo-400 mb-2 px-1 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Escolha uma lente cognitiva:</div>
@@ -338,7 +330,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                         </div>
                                     )}
 
-                                    {/* LOADING STATE */}
                                     {loadingMagic && isActive && (
                                         <div className="mb-4 flex flex-col items-center justify-center p-6 bg-white rounded-xl border-2 border-indigo-100 border-dashed animate-pulse">
                                              <Brain className="w-10 h-10 text-indigo-500 animate-spin mb-2" />
@@ -346,7 +337,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                         </div>
                                     )}
 
-                                    {/* RESULT DISPLAY */}
                                     {hasResult && isActive && (
                                         <div className="mb-4 bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-200">
                                             <div className="bg-indigo-50 px-3 py-2 border-b border-indigo-100 flex justify-between items-center">
@@ -372,7 +362,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                 </div>
             )}
 
-            {/* CAPÍTULOS (Novo para Normal/Turbo) */}
             {guide.chapters && guide.chapters.length > 0 && (
                 <div className="mt-8">
                     <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -386,13 +375,161 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
             )}
         </div>
 
-        {/* CHECKPOINTS (Jornada) - Mantido se houver */}
         {!isParetoOnly && guide.checkpoints && guide.checkpoints.length > 0 && (
             <div className="relative mt-8">
-                {/* Header de progresso */}
                 <div className="mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm no-print">
                     <div className="flex justify-between text-sm mb-2">
-                        <span className="font-bold text-gray-700 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500"/> Plano de Ação</span>
+                        <span className="font-bold text-gray-700 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500"/> Progresso da Jornada</span>
                         <span className="text-indigo-600 font-bold">{completedCount}/{totalCount} passos</span>
                     </div>
-                    <div className="w-
+                    <div className="w-full bg-gray-100 rounded-full h-3 border border-gray-100 overflow-hidden">
+                        <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1" style={{ width: `${progress}%` }}></div>
+                    </div>
+                </div>
+
+                <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-300 hidden md:block print:hidden"></div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-8 pl-4 print:pl-0">A Jornada (Checkpoints)</h3>
+                <div className="space-y-8">
+                {guide.checkpoints.map((cp, idx) => {
+                    const showDrawSection = cp.drawExactly && cp.drawExactly.trim().length > 0 && cp.drawLabel !== 'none';
+                    const drawLabelText = cp.drawLabel === 'essential' ? 'DESENHO ESSENCIAL' : 'SUGESTÃO VISUAL';
+                    
+                    return (
+                    <div key={idx} className="relative md:pl-20 print:pl-0 break-inside-avoid">
+                        <div className={`absolute left-4 top-6 w-8 h-8 border-4 rounded-full hidden md:flex items-center justify-center z-10 print:hidden transition-colors duration-300 ${cp.completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-indigo-500'}`}>
+                            <span className={`text-xs font-bold ${cp.completed ? 'text-white' : 'text-indigo-700'}`}>{cp.completed ? '✓' : idx + 1}</span>
+                        </div>
+
+                        <div className={`rounded-xl paper-shadow overflow-hidden border transition-all duration-300 print:shadow-none print:border-black print:mb-4 ${cp.completed ? 'border-emerald-200 bg-emerald-50/10' : 'bg-white border-gray-100'}`}>
+                            <div className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ${cp.completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-gray-200'} print:bg-gray-100 print:border-black`}>
+                                <div className="flex items-start gap-4">
+                                    <button onClick={() => handleToggleCheckpoint(idx)} className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center shrink-0 no-print ${cp.completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 text-transparent'}`} title={cp.completed ? 'Marcar como pendente' : 'Marcar como concluído'}><CheckCircle className="w-6 h-6" /></button>
+                                    <div><span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black ${cp.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>Checkpoint #{idx + 1}</span><h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-emerald-900' : 'text-gray-900'}`}>{cp.mission}</h4></div>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100 print:bg-white print:border print:border-black">
+                                    <Clock className="w-4 h-4" />
+                                    <span>{cp.timestamp}</span>
+                                </div>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <div className="flex gap-4">
+                                    <div className="mt-1"><Eye className="w-5 h-5 text-blue-500 print:text-black" /></div>
+                                    <div><h5 className="font-bold text-gray-700 text-sm uppercase mb-1">O que procurar:</h5><p className="text-gray-600 leading-relaxed print:text-black">{cp.lookFor}</p></div>
+                                </div>
+
+                                <div className="flex gap-4 bg-yellow-50/50 p-4 rounded-lg border border-yellow-100 print:bg-white print:border-gray-200">
+                                    <div className="mt-1"><PenTool className="w-5 h-5 text-orange-500 print:text-black" /></div>
+                                    <div className="flex-1 w-full">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <h5 className="font-bold text-gray-700 text-sm uppercase">Anotar Exatamente Isso:</h5>
+                                        </div>
+                                        <textarea
+                                            id={`note-textarea-${idx}`}
+                                            ref={(el) => { textareaRefs.current[idx] = el; }}
+                                            className="w-full bg-transparent border-none outline-none resize-none font-serif text-lg text-gray-800 leading-relaxed overflow-hidden"
+                                            value={cp.noteExactly}
+                                            onChange={(e) => {
+                                                handleUpdateCheckpoint(idx, 'noteExactly', e.target.value);
+                                                adjustTextareaHeight(e.target);
+                                            }}
+                                            rows={1}
+                                        />
+                                    </div>
+                                </div>
+
+                                {showDrawSection && (
+                                    <div className="flex gap-4 bg-purple-50/50 p-4 rounded-lg border border-purple-100 print:bg-white print:border-gray-200">
+                                        <div className="mt-1"><Edit className="w-5 h-5 text-purple-500 print:text-black" /></div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h5 className="font-bold text-purple-900 text-sm uppercase flex items-center gap-2">
+                                                    {drawLabelText}
+                                                    {cp.drawLabel === 'essential' && <span className="bg-purple-200 text-purple-800 text-[10px] px-1.5 py-0.5 rounded-full">Obrigatório</span>}
+                                                </h5>
+                                                {!cp.imageUrl && (
+                                                    <button 
+                                                        onClick={() => handleGenerateImage(idx, cp.drawExactly)} 
+                                                        disabled={loadingImage === idx}
+                                                        className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded transition-colors flex items-center gap-1 no-print disabled:opacity-50"
+                                                    >
+                                                        {loadingImage === idx ? 'Gerando...' : <><ImageIcon className="w-3 h-3"/> Gerar Diagrama AI</>}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <p className="text-gray-700 italic border-l-2 border-purple-300 pl-3 mb-3 print:text-black">{cp.drawExactly}</p>
+                                            
+                                            {cp.imageUrl ? (
+                                                <div className="mt-2 rounded-lg overflow-hidden border border-purple-200 shadow-sm relative group">
+                                                     <img src={cp.imageUrl} alt="Diagrama gerado por IA" className="w-full h-auto max-h-64 object-contain bg-white" />
+                                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                                                         <button onClick={() => handleGenerateImage(idx, cp.drawExactly)} className="bg-white/80 p-1.5 rounded-full hover:bg-white text-purple-700 shadow-sm" title="Regerar Imagem"><RefreshCw className="w-4 h-4"/></button>
+                                                     </div>
+                                                </div>
+                                            ) : (
+                                                <div className="h-32 border-2 border-dashed border-purple-200 rounded-lg flex items-center justify-center text-purple-300 text-sm print:border-black">Espaço para desenho</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 print:bg-white print:border-black">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <HelpCircle className="w-4 h-4 text-indigo-500" />
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pergunta de Verificação</span>
+                                    </div>
+                                    <p className="font-bold text-gray-800">{cp.question}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    );
+                })}
+                </div>
+
+                {/* GAMEFIED FOOTER - DESBLOQUEIO DE RECOMPENSAS */}
+                <div className="mt-12 md:pl-20 pb-8 no-print">
+                    <div className={`rounded-xl border-2 p-6 flex flex-col md:flex-row items-center justify-between gap-6 transition-all ${allCompleted ? 'bg-green-50 border-green-200 shadow-lg shadow-green-100' : 'bg-gray-50 border-gray-200 border-dashed opacity-75'}`}>
+                        <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${allCompleted ? 'bg-green-100 text-green-600 animate-bounce' : 'bg-gray-200 text-gray-400'}`}>
+                                {allCompleted ? <Sparkles className="w-6 h-6"/> : <Lock className="w-6 h-6"/>}
+                            </div>
+                            <div>
+                                <h4 className={`font-bold text-lg ${allCompleted ? 'text-green-800' : 'text-gray-500'}`}>
+                                    {allCompleted ? '🎉 Estudo Concluído! Revisão Liberada' : 'Complete a Jornada para Liberar'}
+                                </h4>
+                                <p className="text-sm text-gray-600 max-w-md">
+                                    {allCompleted 
+                                      ? 'Parabéns! Você dominou a primeira etapa. Agora consolide sua memória com os desafios abaixo.' 
+                                      : 'Marque todos os checkpoints acima como "Concluídos" para desbloquear o Quiz e os Flashcards.'}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={onGoToFlashcards}
+                                disabled={!allCompleted}
+                                className={`px-4 py-3 rounded-xl font-bold text-white shadow-md transition-all flex items-center gap-2 ${allCompleted ? 'bg-purple-600 hover:bg-purple-700 hover:scale-105 cursor-pointer' : 'bg-gray-400 cursor-not-allowed grayscale'}`}
+                            >
+                                <Layers className="w-5 h-5"/>
+                                Flashcards
+                            </button>
+                            
+                            <button 
+                                onClick={onGenerateQuiz}
+                                disabled={!allCompleted}
+                                className={`px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2 transform ${allCompleted ? 'bg-green-600 hover:bg-green-700 hover:scale-105 cursor-pointer shadow-green-200' : 'bg-gray-400 cursor-not-allowed grayscale'}`}
+                            >
+                                <Play className="w-5 h-5"/>
+                                Iniciar Quiz
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
