@@ -51,10 +51,10 @@ progress: ${completedCount}/${totalCount}
 ## 🧠 ${isParetoOnly ? 'RESUMO PARETO 80/20' : 'Advance Organizer'}
 ${guide.overview}
 
-${!isParetoOnly ? `
-## 🎯 Conceitos Core (Pareto 80/20)
+## 🎯 Conceitos Core
 ${guide.coreConcepts.map(c => `- **${c.concept}**: ${c.definition}`).join('\n')}
 
+${!isParetoOnly ? `
 ## 📍 Jornada de Aprendizagem (Checkpoints)
 
 ${guide.checkpoints.map((cp, i) => `### ${i+1}. ${cp.mission} [${cp.completed ? 'x' : ' '}]
@@ -220,18 +220,18 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
             <div className={`mb-6 p-6 rounded-lg border ${isParetoOnly ? 'bg-red-50 border-red-100' : 'bg-indigo-50 border-indigo-100'} print:bg-gray-50 print:border-gray-300`}>
             <div className={`flex items-center gap-2 mb-2 ${isParetoOnly ? 'text-red-700' : 'text-indigo-700'} font-semibold uppercase tracking-wide text-sm print:text-black`}>
                 <BrainCircuit className="w-5 h-5" />
-                <span>{isParetoOnly ? 'ESSÊNCIA PARETO 80/20' : 'Advance Organizer (O Mapa)'}</span>
+                <span>{isParetoOnly ? 'RESUMO EXECUTIVO (80/20)' : 'Advance Organizer (O Mapa)'}</span>
             </div>
             <div className={`${isParetoOnly ? 'text-red-900 whitespace-pre-wrap' : 'text-indigo-900'} leading-relaxed text-lg font-serif print:text-black`}>
                 {renderMarkdownText(guide.overview)}
             </div>
             </div>
 
-            {!isParetoOnly && guide.coreConcepts.length > 0 && (
+            {guide.coreConcepts.length > 0 && (
                 <div>
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <Target className="w-6 h-6 text-red-500 print:text-black" />
-                        Conceitos Core (Pareto 80/20)
+                        <Target className={`w-6 h-6 ${isParetoOnly ? 'text-red-500' : 'text-indigo-500'} print:text-black`} />
+                        {isParetoOnly ? 'Conceitos Chave (O 20%)' : 'Conceitos Core'}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {guide.coreConcepts.map((item, idx) => {
@@ -292,7 +292,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                     )}
 
                                     <div className="bg-yellow-50 p-4 rounded-lg text-sm text-gray-800 border-l-4 border-yellow-400 font-mono print:bg-white print:border-black print:italic leading-relaxed shadow-sm">
-                                        <p className="text-[10px] font-bold text-yellow-600 uppercase mb-1">ANOTAR EXATAMENTE ISSO:</p>
+                                        <p className="text-[10px] font-bold text-yellow-600 uppercase mb-1">DEFINIÇÃO:</p>
                                         "{item.definition}"
                                     </div>
                                 </div>
@@ -334,102 +334,4 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                     <button onClick={() => handleToggleCheckpoint(idx)} className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center shrink-0 no-print ${cp.completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 text-transparent'}`} title={cp.completed ? 'Marcar como pendente' : 'Marcar como concluído'}><CheckCircle className="w-6 h-6" /></button>
                                     <div><span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black ${cp.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>Checkpoint #{idx + 1}</span><h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-emerald-900' : 'text-gray-900'}`}>{cp.mission}</h4></div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100 print:bg-white print:border print:border-black print:text-black self-start md:self-auto"><span>⏱️ {cp.timestamp}</span></div>
-                            </div>
-
-                            <div className={`p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 transition-opacity ${cp.completed ? 'opacity-80 hover:opacity-100' : 'opacity-100'}`}>
-                                <div className="space-y-4">
-                                    <div className="flex gap-3"><div className="min-w-6 pt-1 text-blue-500 print:text-black"><Eye className="w-5 h-5"/></div><div><p className="text-xs font-bold text-gray-400 uppercase print:text-black">Procurar</p><p className="text-gray-700 print:text-black">{cp.lookFor}</p></div></div>
-                                    <div className="flex gap-3"><div className="min-w-6 pt-1 text-green-600 print:text-black"><CheckCircle className="w-5 h-5"/></div><div><p className="text-xs font-bold text-gray-400 uppercase print:text-black">Pergunta (Active Recall)</p><p className="text-gray-800 font-medium italic print:text-black">"{cp.question}"</p></div></div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 print:bg-white print:border-black relative group">
-                                        <p className="text-[10px] font-bold text-yellow-600 uppercase mb-2 flex justify-between items-center print:text-black"><span>📝 Anotar Exatamente Isso</span></p>
-                                        <textarea
-                                            id={`note-textarea-${idx}`}
-                                            ref={(el) => { textareaRefs.current[idx] = el; }}
-                                            value={cp.noteExactly}
-                                            onChange={(e) => {
-                                                handleUpdateCheckpoint(idx, 'noteExactly', e.target.value);
-                                                adjustTextareaHeight(e.target);
-                                            }}
-                                            className="w-full bg-transparent border-none outline-none resize-none text-gray-800 font-mono text-sm leading-relaxed overflow-hidden focus:ring-0 p-0"
-                                            placeholder="Suas anotações..."
-                                        />
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 no-print bg-yellow-100 rounded-lg p-1">
-                                            <button onClick={() => handleFormat(idx, 'b')} className="w-6 h-6 flex items-center justify-center bg-white rounded text-xs font-bold hover:bg-gray-50 border border-yellow-200">B</button>
-                                            <button onClick={() => handleFormat(idx, 'i')} className="w-6 h-6 flex items-center justify-center bg-white rounded text-xs italic hover:bg-gray-50 border border-yellow-200">I</button>
-                                            <button onClick={() => handleFormat(idx, 'mark')} className="w-6 h-6 flex items-center justify-center bg-yellow-200 rounded text-xs hover:bg-yellow-300 border border-yellow-300">M</button>
-                                        </div>
-                                    </div>
-
-                                    {showDrawSection && (
-                                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 border-dashed print:bg-white print:border-black">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <p className="text-[10px] font-bold text-purple-600 uppercase flex items-center gap-1 print:text-black"><PenTool className="w-3 h-3"/> {drawLabelText}</p>
-                                            </div>
-                                            <p className="text-gray-700 text-sm mb-3 italic print:text-black">{cp.drawExactly}</p>
-                                            
-                                            {cp.imageUrl ? (
-                                                <div className="relative group">
-                                                    <img src={cp.imageUrl} alt="Diagrama gerado" className="w-full rounded-lg border border-gray-200" />
-                                                    <button onClick={() => handleGenerateImage(idx, cp.drawExactly)} className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-lg text-gray-600 hover:text-indigo-600 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity no-print" title="Regerar imagem"><RefreshCw className="w-4 h-4"/></button>
-                                                </div>
-                                            ) : (
-                                                <div className="h-32 bg-white rounded-lg border-2 border-dashed border-purple-100 flex flex-col items-center justify-center text-purple-300 no-print">
-                                                    <div className="text-center">
-                                                        <p className="text-xs mb-2">Espaço para desenho</p>
-                                                        <button 
-                                                            onClick={() => handleGenerateImage(idx, cp.drawExactly)}
-                                                            disabled={loadingImage === idx}
-                                                            className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 mx-auto"
-                                                        >
-                                                            {loadingImage === idx ? <span className="animate-spin">⌛</span> : <ImageIcon className="w-3 h-3" />} 
-                                                            {loadingImage === idx ? 'Gerando...' : 'Gerar Sugestão IA'}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    );
-                })}
-                </div>
-
-                {/* BOTTOM QUIZ UNLOCK SECTION */}
-                <div className="mt-12 md:pl-20 pb-8 no-print">
-                    <div className={`rounded-xl border-2 p-6 flex flex-col md:flex-row items-center justify-between gap-6 transition-all ${allCompleted ? 'bg-green-50 border-green-200 shadow-lg shadow-green-100' : 'bg-gray-50 border-gray-200 border-dashed opacity-75'}`}>
-                        <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${allCompleted ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}>
-                                {allCompleted ? <HelpCircle className="w-6 h-6"/> : <Lock className="w-6 h-6"/>}
-                            </div>
-                            <div>
-                                <h4 className={`font-bold text-lg ${allCompleted ? 'text-green-800' : 'text-gray-500'}`}>
-                                    {allCompleted ? 'Jornada Concluída! Quiz Liberado' : 'Complete a Jornada para Liberar'}
-                                </h4>
-                                <p className="text-sm text-gray-600 max-w-md">
-                                    {allCompleted ? 'Parabéns! Você completou todos os checkpoints. Agora é hora de testar seu conhecimento.' : 'Marque todos os checkpoints acima como concluídos para liberar o Quiz e os Flashcards.'}
-                                </p>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={onGenerateQuiz}
-                            disabled={!allCompleted}
-                            className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2 transform ${allCompleted ? 'bg-green-600 hover:bg-green-700 hover:scale-105 cursor-pointer shadow-green-200' : 'bg-gray-400 cursor-not-allowed grayscale'}`}
-                        >
-                            <Play className="w-5 h-5"/>
-                            {allCompleted ? 'Iniciar Quiz' : 'Bloqueado'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-      </div>
-    </div>
-  );
-};
+                                <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100 print:bg-white print:border print

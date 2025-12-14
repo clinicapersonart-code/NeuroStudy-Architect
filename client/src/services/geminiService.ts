@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
@@ -56,10 +57,21 @@ export const generateStudyGuide = async (
   // CRITICAL: Use gemini-3-pro-preview for deep reasoning and image analysis
  const modelName = 'gemini-2.0-flash';
 
-  let modeInstructions = "MODO: NORMAL.";
+  let modeInstructions = "MODO: NORMAL (Gere um roteiro ativo com checkpoints).";
+  
   if (mode === StudyMode.HARD) modeInstructions = "MODO: HARD (Detalhe Máximo e Profundidade).";
   if (mode === StudyMode.SURVIVAL) modeInstructions = "MODO: SOBREVIVÊNCIA (Apenas o essencial para passar).";
-  if (mode === StudyMode.PARETO) modeInstructions = "MODO: PARETO 80/20 (Foque nos 20% do conteúdo que geram 80% do resultado).";
+  
+  // Instrução específica para Pareto: Foca na extração e resumo, ignora checkpoints
+  if (mode === StudyMode.PARETO) {
+      modeInstructions = `
+      MODO: PARETO 80/20 (RESUMO EXECUTIVO).
+      SEU OBJETIVO: Extrair e resumir o conteúdo.
+      1. 'overview': Deve ser um resumo completo, detalhado e bem estruturado do conteúdo. Use Markdown para títulos e bullet points.
+      2. 'coreConcepts': Liste os principais termos técnicos ou ideias chave e suas definições.
+      3. 'checkpoints': DEIXE ESTE ARRAY VAZIO []. Não crie missões de estudo. O usuário quer apenas ler o resumo.
+      `;
+  }
 
   const MASTER_PROMPT = `
   Atue como o melhor Arquiteto de Aprendizagem do mundo.
@@ -68,19 +80,15 @@ export const generateStudyGuide = async (
   
   ${modeInstructions}
 
-  SEU OBJETIVO:
-  Transformar o conteúdo fornecido (Texto, PDF, Vídeo ou Imagem) em um GUIA DE ESTUDO ATIVO estruturado.
-  Não apenas resuma. Crie um roteiro de ações para o estudante.
-  
+  PARA O MODO PARETO:
+  Ignore a estrutura de "Roteiro de Estudo Ativo". Foque 100% em extrair o texto, resumir as ideias principais e listar os conceitos chave. O campo 'overview' deve ser rico e conter a essência do arquivo (os 20% que explicam 80% do conteúdo).
+
+  PARA OUTROS MODOS:
+  Transforme o conteúdo fornecido em um GUIA DE ESTUDO ATIVO estruturado com checkpoints.
+
   PARA IMAGENS (CADERNOS/LOUSAS):
-  Se o conteúdo for uma imagem (foto de caderno, anotação manuscrita, lousa, slide), analise visualmente cada detalhe. Transcreva textos manuscritos com precisão, interprete diagramas e setas. Use isso para criar o roteiro.
+  Analise visualmente cada detalhe. Transcreva textos manuscritos com precisão.
   
-  PARA VÍDEOS:
-  O conteúdo fornecido é a transcrição ou o arquivo de vídeo. Analise o fluxo de ideias faladas e estruture em tópicos lógicos.
-
-  PARA DOI/ARTIGOS:
-  Se receber um DOI ou link acadêmico, foque na metodologia, resultados e conclusões.
-
   SAÍDA OBRIGATÓRIA: APENAS JSON VÁLIDO seguindo o schema.
   `;
 
@@ -89,7 +97,7 @@ export const generateStudyGuide = async (
   if (isBinary) {
      // Para PDF, Imagem, Vídeo
      parts.push({ inlineData: { mimeType: mimeType, data: content } });
-     parts.push({ text: "Analise este arquivo (imagem/video/pdf) detalhadamente e gere o roteiro de estudos." });
+     parts.push({ text: "Analise este arquivo detalhadamente." });
   } else {
      // Para Texto, URL, DOI
      parts.push({ text: content });
