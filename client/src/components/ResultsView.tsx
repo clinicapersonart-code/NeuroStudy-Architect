@@ -7,18 +7,18 @@ interface ResultsViewProps {
   guide: StudyGuide;
   onReset: () => void;
   onGenerateQuiz: () => void;
+  onGoToFlashcards?: () => void; // Nova prop opcional
   onUpdateGuide?: (newGuide: StudyGuide) => void;
   isParetoOnly?: boolean;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGenerateQuiz, onUpdateGuide, isParetoOnly = false }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGenerateQuiz, onGoToFlashcards, onUpdateGuide, isParetoOnly = false }) => {
   const [activeMagicMenu, setActiveMagicMenu] = useState<{idx: number, type: 'concept' | 'checkpoint'} | null>(null);
   const [magicOutput, setMagicOutput] = useState<{idx: number, text: string} | null>(null);
   const [loadingMagic, setLoadingMagic] = useState(false);
   const [loadingImage, setLoadingImage] = useState<number | null>(null); 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
-  // Estado para expandir/colapsar capítulos
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
 
   const toggleChapter = (index: number) => {
@@ -395,71 +395,4 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                         <span className="font-bold text-gray-700 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500"/> Plano de Ação</span>
                         <span className="text-indigo-600 font-bold">{completedCount}/{totalCount} passos</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-3 border border-gray-100 overflow-hidden">
-                        <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1" style={{ width: `${progress}%` }}></div>
-                    </div>
-                </div>
-
-                <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-300 hidden md:block print:hidden"></div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-8 pl-4 print:pl-0">Checklist de Estudo</h3>
-                <div className="space-y-8">
-                {guide.checkpoints.map((cp, idx) => {
-                    const showDrawSection = cp.drawExactly && cp.drawExactly.trim().length > 0 && cp.drawLabel !== 'none';
-                    const drawLabelText = cp.drawLabel === 'essential' ? 'DESENHO ESSENCIAL' : 'SUGESTÃO VISUAL';
-                    
-                    return (
-                    <div key={idx} className="relative md:pl-20 print:pl-0 break-inside-avoid">
-                        <div className={`absolute left-4 top-6 w-8 h-8 border-4 rounded-full hidden md:flex items-center justify-center z-10 print:hidden transition-colors duration-300 ${cp.completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-indigo-500'}`}>
-                            <span className={`text-xs font-bold ${cp.completed ? 'text-white' : 'text-indigo-700'}`}>{cp.completed ? '✓' : idx + 1}</span>
-                        </div>
-
-                        <div className={`rounded-xl paper-shadow overflow-hidden border transition-all duration-300 print:shadow-none print:border-black print:mb-4 ${cp.completed ? 'border-emerald-200 bg-emerald-50/10' : 'bg-white border-gray-100'}`}>
-                            <div className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ${cp.completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-gray-200'} print:bg-gray-100 print:border-black`}>
-                                <div className="flex items-start gap-4">
-                                    <button onClick={() => handleToggleCheckpoint(idx)} className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center shrink-0 no-print ${cp.completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 text-transparent'}`} title={cp.completed ? 'Marcar como pendente' : 'Marcar como concluído'}><CheckCircle className="w-6 h-6" /></button>
-                                    <div><span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black ${cp.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>Checkpoint #{idx + 1}</span><h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-emerald-900' : 'text-gray-900'}`}>{cp.mission}</h4></div>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100 print:bg-white print:border print:border-black print:text-black self-start md:self-auto">
-                                    <Clock className="w-4 h-4" />
-                                    <span>{cp.timestamp}</span>
-                                </div>
-                            </div>
-
-                            <div className="p-6 space-y-6">
-                                <div className="flex gap-4">
-                                    <div className="mt-1"><Eye className="w-5 h-5 text-blue-500 print:text-black" /></div>
-                                    <div><h5 className="font-bold text-gray-700 text-sm uppercase mb-1">O que procurar:</h5><p className="text-gray-600 leading-relaxed print:text-black">{cp.lookFor}</p></div>
-                                </div>
-
-                                <div className="flex gap-4 bg-yellow-50/50 p-4 rounded-lg border border-yellow-100 print:bg-white print:border-gray-200">
-                                    <div className="mt-1"><PenTool className="w-5 h-5 text-orange-500 print:text-black" /></div>
-                                    <div className="flex-1 w-full">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <h5 className="font-bold text-gray-700 text-sm uppercase">Anotar Exatamente Isso:</h5>
-                                            {/* Botoes de formatacao REMOVIDOS daqui conforme solicitado */}
-                                        </div>
-                                        <textarea
-                                            id={`note-textarea-${idx}`}
-                                            className="w-full bg-transparent border-none outline-none resize-none font-serif text-lg text-gray-800 leading-relaxed overflow-hidden"
-                                            value={cp.noteExactly}
-                                            onChange={(e) => handleUpdateCheckpoint(idx, 'noteExactly', e.target.value)}
-                                            rows={1}
-                                        />
-                                    </div>
-                                </div>
-
-                                {showDrawSection && (
-                                    <div className="flex gap-4 bg-purple-50/50 p-4 rounded-lg border border-purple-100 print:bg-white print:border-gray-200">
-                                        <div className="mt-1"><Edit className="w-5 h-5 text-purple-500 print:text-black" /></div>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h5 className="font-bold text-purple-900 text-sm uppercase flex items-center gap-2">
-                                                    {drawLabelText}
-                                                    {cp.drawLabel === 'essential' && <span className="bg-purple-200 text-purple-800 text-[10px] px-1.5 py-0.5 rounded-full">Obrigatório</span>}
-                                                </h5>
-                                                {!cp.imageUrl && (
-                                                    <button 
-                                                        onClick={() => handleGenerateImage(idx, cp.drawExactly)} 
-                                                        disabled={loadingImage === idx}
-                                                        className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded transition-colors flex items-center gap-1 no-print disabled:opacity-50"
-                                                    >
+                    <div className="w-
