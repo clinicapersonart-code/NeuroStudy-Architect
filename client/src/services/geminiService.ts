@@ -1,10 +1,9 @@
-/// <reference types="vite/client" />
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
 // Função para pegar a chave com segurança, compatível com Vite (import.meta.env)
 const getApiKey = (): string | undefined => {
-  return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY || (window as any).process?.env?.API_KEY;
+  return (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || (window as any).process?.env?.API_KEY;
 };
 
 const RESPONSE_SCHEMA: Schema = {
@@ -55,7 +54,7 @@ export const generateStudyGuide = async (
   const ai = new GoogleGenAI({ apiKey });
   
   // CRITICAL: Use gemini-3-pro-preview for deep reasoning and image analysis
-  const modelName = 'gemini-3-pro-preview'; 
+  const modelName = 'gemini-2.0-flash';
 
   let modeInstructions = "MODO: NORMAL.";
   if (mode === StudyMode.HARD) modeInstructions = "MODO: HARD (Detalhe Máximo e Profundidade).";

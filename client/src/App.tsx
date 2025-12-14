@@ -305,6 +305,7 @@ export function App() {
 
     setQuickInputMode('none');
     setInputText('');
+    setSelectedFile(null);
     setView('app');
 
     if (autoGenerate) {
@@ -442,6 +443,27 @@ export function App() {
     if (!activeStudyId) return;
     setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, quiz: null } : s));
   };
+
+  const handleCreateAndStart = async () => {
+      let content = '';
+      if (inputType === InputType.TEXT || inputType === InputType.DOI || inputType === InputType.URL) {
+          if (!inputText.trim()) {
+              alert("Por favor, insira o conteúdo.");
+              return;
+          }
+          content = inputText;
+      } else {
+          if (!selectedFile) {
+              alert("Por favor, selecione um arquivo.");
+              return;
+          }
+          content = ""; // handleQuickStart handles file logic via File object
+      }
+
+      const inputPayload = (inputType === InputType.TEXT || inputType === InputType.DOI || inputType === InputType.URL) ? content : selectedFile!;
+      handleQuickStart(inputPayload, inputType, selectedMode);
+  };
+
 
   if (!isAuthorized) {
     return (
@@ -637,7 +659,7 @@ export function App() {
             ) : (
                 <h1 className="text-xl font-bold text-gray-400 flex items-center gap-2">
                     <NeuroLogo size={24} className="grayscale opacity-50"/>
-                    Selecione ou crie um estudo
+                    Criar Novo Estudo
                 </h1>
             )}
           </div>
@@ -892,12 +914,87 @@ export function App() {
                 </div>
             </div>
           ) : (
-             <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
-                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                     <NeuroLogo size={60} className="grayscale opacity-30"/>
+             <div className="flex flex-col h-full bg-slate-50 overflow-y-auto animate-in fade-in slide-in-from-bottom-4">
+                 <div className="max-w-4xl mx-auto w-full p-6 space-y-8">
+                    {/* Header */}
+                    <div className="text-center pt-8">
+                        <NeuroLogo size={60} className="mx-auto mb-4 text-indigo-600" />
+                        <h2 className="text-3xl font-bold text-gray-900">Novo Estudo</h2>
+                        <p className="text-gray-500">Escolha o nível de profundidade e sua fonte para começar.</p>
+                    </div>
+
+                    {/* Mode Selection */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button onClick={() => setSelectedMode(StudyMode.SURVIVAL)} className={`p-4 rounded-xl border-2 transition-all flex flex-col gap-2 text-left ${selectedMode === StudyMode.SURVIVAL ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50/50'}`}>
+                            <div className="bg-green-100 w-10 h-10 rounded-lg flex items-center justify-center text-green-600"><BatteryCharging className="w-6 h-6"/></div>
+                            <div><span className="block font-bold text-gray-900">Sobrevivência</span><span className="text-xs text-gray-500">Apenas o essencial. Rápido e direto.</span></div>
+                        </button>
+                        <button onClick={() => setSelectedMode(StudyMode.NORMAL)} className={`p-4 rounded-xl border-2 transition-all flex flex-col gap-2 text-left ${selectedMode === StudyMode.NORMAL ? 'border-indigo-500 bg-indigo-50 shadow-md ring-1 ring-indigo-200' : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'}`}>
+                             <div className="bg-indigo-100 w-10 h-10 rounded-lg flex items-center justify-center text-indigo-600"><Activity className="w-6 h-6"/></div>
+                             <div><span className="block font-bold text-gray-900">Normal</span><span className="text-xs text-gray-500">Equilíbrio ideal entre teoria e prática.</span></div>
+                        </button>
+                        <button onClick={() => setSelectedMode(StudyMode.HARD)} className={`p-4 rounded-xl border-2 transition-all flex flex-col gap-2 text-left ${selectedMode === StudyMode.HARD ? 'border-purple-500 bg-purple-50 shadow-md ring-1 ring-purple-200' : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50'}`}>
+                             <div className="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center text-purple-600"><Rocket className="w-6 h-6"/></div>
+                             <div><span className="block font-bold text-gray-900">Hard</span><span className="text-xs text-gray-500">Profundidade máxima e detalhes.</span></div>
+                        </button>
+                    </div>
+
+                    {/* Source Input (Reusing Logic) */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                        <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><UploadCloud className="w-5 h-5 text-indigo-500"/> Fonte do Conteúdo</h3>
+                        
+                        <div className="flex gap-2 mb-4 bg-gray-50 p-1 rounded-lg w-fit">
+                            <button onClick={() => setInputType(InputType.TEXT)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.TEXT ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Texto</button>
+                            <button onClick={() => setInputType(InputType.PDF)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.PDF ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>PDF</button>
+                            <button onClick={() => setInputType(InputType.VIDEO)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.VIDEO ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Vídeo</button>
+                            <button onClick={() => setInputType(InputType.IMAGE)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.IMAGE ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Imagem</button>
+                            <button onClick={() => setInputType(InputType.URL)} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${inputType === InputType.URL ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Link</button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {inputType === InputType.TEXT || inputType === InputType.DOI || inputType === InputType.URL ? (
+                                <textarea
+                                    value={inputText}
+                                    onChange={(e) => setInputText(e.target.value)}
+                                    className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                    placeholder={inputType === InputType.URL ? "Cole o link aqui..." : "Cole seu texto ou anotações aqui..."}
+                                />
+                            ) : (
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
+                                    <input 
+                                        type="file" 
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                        accept={inputType === InputType.PDF ? ".pdf" : inputType === InputType.VIDEO ? "video/*,audio/*" : "image/*"}
+                                    />
+                                    <div className="flex flex-col items-center gap-2 text-gray-500">
+                                        {selectedFile ? (
+                                            <>
+                                                <FileText className="w-8 h-8 text-indigo-500"/>
+                                                <span className="font-medium text-gray-900">{selectedFile.name}</span>
+                                                <span className="text-xs">Clique para trocar</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <UploadCloud className="w-8 h-8"/>
+                                                <span className="font-medium">Clique ou arraste o arquivo aqui</span>
+                                                <span className="text-xs">Suporta {inputType === InputType.PDF ? 'PDFs' : inputType === InputType.VIDEO ? 'Vídeo/Áudio' : 'Imagens'}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <button 
+                                onClick={handleCreateAndStart}
+                                className="w-full bg-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 flex items-center justify-center gap-2"
+                            >
+                                <Rocket className="w-5 h-5"/>
+                                Iniciar Estudo
+                            </button>
+                        </div>
+                    </div>
                  </div>
-                 <h2 className="text-xl font-bold text-gray-600 mb-2">Nenhum estudo selecionado</h2>
-                 <p className="max-w-xs">Selecione um item na barra lateral ou crie um novo estudo para começar.</p>
              </div>
           )}
         </div>
@@ -905,6 +1002,7 @@ export function App() {
         {/* Floating Widgets */}
         <PomodoroTimer />
         <ChatWidget studyGuide={activeStudy?.guide || null} />
+        {showMethodologyModal && <MethodologyModal onClose={() => setShowMethodologyModal(false)} />}
       </div>
     </div>
   );
