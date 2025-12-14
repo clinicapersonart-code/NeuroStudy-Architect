@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StudyGuide } from '../types';
-import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Edit, Layers, ChevronRight, Smile, Sparkles, Globe, Lock, Play, RefreshCw, Clock } from './Icons';
+import { StudyGuide, BookChapter } from '../types';
+import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Sparkles, RefreshCw, Layers, Play, Lock, ChevronDown, ChevronRight, BookOpen, Clock } from './Icons';
 import { refineContent, generateDiagram } from '../services/geminiService';
 
 interface ResultsViewProps {
@@ -17,11 +17,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGene
   const [loadingMagic, setLoadingMagic] = useState(false);
   const [loadingImage, setLoadingImage] = useState<number | null>(null); 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  
+  // Estado para expandir/colapsar capítulos
+  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
+
+  const toggleChapter = (index: number) => {
+      setExpandedChapters(prev => ({...prev, [index]: !prev[index]}));
+  };
+
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
 
   // Calculate Progress
-  const completedCount = guide.checkpoints.filter(cp => cp.completed).length;
-  const totalCount = guide.checkpoints.length;
+  const completedCount = guide.checkpoints ? guide.checkpoints.filter(cp => cp.completed).length : 0;
+  const totalCount = guide.checkpoints ? guide.checkpoints.length : 0;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
   const allCompleted = totalCount > 0 && completedCount === totalCount;
 
@@ -33,7 +41,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGene
   };
 
   useEffect(() => {
-    textareaRefs.current.forEach(adjustTextareaHeight);
+    if (textareaRefs.current) {
+        textareaRefs.current.forEach(adjustTextareaHeight);
+    }
   }, [guide.checkpoints]);
 
   const generateMarkdown = (guide: StudyGuide) => {
@@ -50,10 +60,10 @@ progress: ${completedCount}/${totalCount}
 ## 🧠 ${isParetoOnly ? 'RESUMO PARETO 80/20' : 'Advance Organizer'}
 ${guide.overview}
 
-## 🎯 Conceitos Core
+${!isParetoOnly ? `
+## 🎯 Conceitos Core (Pareto 80/20)
 ${guide.coreConcepts.map(c => `- **${c.concept}**: ${c.definition}`).join('\n')}
 
-${!isParetoOnly ? `
 ## 📍 Jornada de Aprendizagem (Checkpoints)
 
 ${guide.checkpoints.map((cp, i) => `### ${i+1}. ${cp.mission} [${cp.completed ? 'x' : ' '}]
@@ -129,21 +139,6 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
     onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
   };
 
-  const handleFormat = (index: number, tag: string) => {
-    const textareaId = `note-textarea-${index}`;
-    const textarea = document.getElementById(textareaId) as HTMLTextAreaElement;
-    if (!textarea || !onUpdateGuide) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = guide.checkpoints[index].noteExactly;
-    if (start === end) return; 
-    const before = text.substring(0, start);
-    const selected = text.substring(start, end);
-    const after = text.substring(end);
-    const newText = `${before}<${tag}>${selected}</${tag}>${after}`;
-    handleUpdateCheckpoint(index, 'noteExactly', newText);
-  };
-
   const handleMagicAction = async (text: string, task: 'simplify' | 'example' | 'mnemonic' | 'joke', idx: number) => {
     setLoadingMagic(true);
     setMagicOutput(null);
@@ -186,6 +181,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
   };
 
   const renderMarkdownText = (text: string) => {
+    if (!text) return null;
     return text.split('\n').map((line, i) => (
       <p key={i} className="mb-1 last:mb-0">
         {line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
@@ -198,9 +194,77 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
     ));
   };
 
+  // --- RENDERIZAÇÃO DE CAPÍTULOS (NOVO) ---
+  const renderChapter = (chapter: BookChapter, index: number) => {
+      const isExpanded = expandedChapters[index];
+      
+      return (
+          <div key={index} className="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden shadow-sm transition-all">
+              <button 
+                onClick={() => toggleChapter(index)}
+                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              >
+                  <div className="flex items-center gap-3">
+                      {isExpanded ? <ChevronDown className="w-5 h-5 text-gray-400"/> : <ChevronRight className="w-5 h-5 text-gray-400"/>}
+                      <h4 className="font-bold text-gray-800 text-lg">{chapter.title}</h4>
+                  </div>
+                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                      {chapter.coreConcepts.length} Conceitos
+                  </span>
+              </button>
+
+              {isExpanded && (
+                  <div className="p-6 border-t border-gray-100 space-y-6">
+                      {/* Resumo do Capítulo */}
+                      <div className="prose prose-sm max-w-none text-gray-600">
+                          <h5 className="font-bold text-gray-800 flex items-center gap-2 mb-2"><BookOpen className="w-4 h-4"/> Resumo</h5>
+                          {renderMarkdownText(chapter.summary)}
+                      </div>
+
+                      {/* Conceitos Core do Capítulo */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {chapter.coreConcepts.map((conc, idx) => (
+                              <div key={idx} className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
+                                  <strong className="block text-yellow-900 mb-1">{conc.concept}</strong>
+                                  <p className="text-sm text-yellow-800">{conc.definition}</p>
+                              </div>
+                          ))}
+                      </div>
+
+                      {/* Aplicação Prática */}
+                      {chapter.practicalApplication && (
+                          <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                              <h5 className="font-bold text-emerald-900 flex items-center gap-2 mb-2"><Target className="w-4 h-4"/> Aplicação Prática</h5>
+                              <p className="text-sm text-emerald-800">{chapter.practicalApplication}</p>
+                          </div>
+                      )}
+
+                      {/* Seções (Modo Turbo) */}
+                      {chapter.sections && chapter.sections.length > 0 && (
+                          <div className="space-y-4 pt-4 border-t border-gray-100">
+                              <h5 className="font-bold text-gray-400 text-xs uppercase tracking-wider">Seções Detalhadas</h5>
+                              {chapter.sections.map((sec, sIdx) => (
+                                  <div key={sIdx} className="pl-4 border-l-2 border-indigo-100">
+                                      <h6 className="font-bold text-gray-700 mb-2">{sec.title}</h6>
+                                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                          {sec.coreConcepts.map((sc, scIdx) => (
+                                              <li key={scIdx}><strong className="text-indigo-900">{sc.concept}:</strong> {sc.definition}</li>
+                                          ))}
+                                      </ul>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              )}
+          </div>
+      );
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
       
+      {/* Header Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 no-print">
         <button onClick={onReset} className="text-sm text-gray-500 hover:text-indigo-600 underline font-medium">
           ← {isParetoOnly ? 'Analisar outro arquivo' : 'Criar novo roteiro'}
@@ -213,24 +277,31 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
       </div>
 
       <div id="printable-guide">
+        {/* Header do Guia */}
         <div className={`bg-white rounded-xl paper-shadow p-8 border-t-4 ${isParetoOnly ? 'border-red-500' : 'border-indigo-500'} print:shadow-none print:border-0 print:border-t-0 print:mb-6`}>
             <div className="flex justify-between items-start mb-4"><h2 className="text-3xl font-serif font-bold text-gray-900">{guide.subject}</h2></div>
             
             <div className={`mb-6 p-6 rounded-lg border ${isParetoOnly ? 'bg-red-50 border-red-100' : 'bg-indigo-50 border-indigo-100'} print:bg-gray-50 print:border-gray-300`}>
-            <div className={`flex items-center gap-2 mb-2 ${isParetoOnly ? 'text-red-700' : 'text-indigo-700'} font-semibold uppercase tracking-wide text-sm print:text-black`}>
-                <BrainCircuit className="w-5 h-5" />
-                <span>{isParetoOnly ? 'RESUMO EXECUTIVO (80/20)' : 'Advance Organizer (O Mapa)'}</span>
-            </div>
-            <div className={`${isParetoOnly ? 'text-red-900 whitespace-pre-wrap' : 'text-indigo-900'} leading-relaxed text-lg font-serif print:text-black`}>
-                {renderMarkdownText(guide.overview)}
-            </div>
+                <div className={`flex items-center gap-2 mb-2 ${isParetoOnly ? 'text-red-700' : 'text-indigo-700'} font-semibold uppercase tracking-wide text-sm print:text-black`}>
+                    <BrainCircuit className="w-5 h-5" />
+                    <span>{isParetoOnly ? 'RESUMO EXECUTIVO (80/20)' : 'Visão Geral (Advance Organizer)'}</span>
+                </div>
+                <div className={`${isParetoOnly ? 'text-red-900 whitespace-pre-wrap' : 'text-indigo-900'} leading-relaxed text-lg font-serif print:text-black`}>
+                    {renderMarkdownText(guide.overview)}
+                </div>
+                {guide.globalApplication && (
+                    <div className="mt-4 pt-4 border-t border-indigo-100 text-indigo-800 text-sm">
+                        <strong>💡 Aplicação Global:</strong> {guide.globalApplication}
+                    </div>
+                )}
             </div>
 
+            {/* Conceitos Globais (Sobrevivência ou Intro) */}
             {guide.coreConcepts.length > 0 && (
-                <div>
+                <div className="mb-8">
                     <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <Target className={`w-6 h-6 ${isParetoOnly ? 'text-red-500' : 'text-indigo-500'} print:text-black`} />
-                        {isParetoOnly ? 'Conceitos Chave (O 20%)' : 'Conceitos Core'}
+                        {isParetoOnly ? 'Conceitos Chave (O 20%)' : 'Conceitos Fundamentais'}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {guide.coreConcepts.map((item, idx) => {
@@ -300,14 +371,29 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                     </div>
                 </div>
             )}
+
+            {/* CAPÍTULOS (Novo para Normal/Turbo) */}
+            {guide.chapters && guide.chapters.length > 0 && (
+                <div className="mt-8">
+                    <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                        <Layers className="w-6 h-6 text-indigo-500" />
+                        Estrutura do Livro ({guide.chapters.length} Capítulos)
+                    </h3>
+                    <div className="space-y-2">
+                        {guide.chapters.map((chapter, idx) => renderChapter(chapter, idx))}
+                    </div>
+                </div>
+            )}
         </div>
 
-        {!isParetoOnly && guide.checkpoints.length > 0 && (
+        {/* CHECKPOINTS (Jornada) - Mantido se houver */}
+        {!isParetoOnly && guide.checkpoints && guide.checkpoints.length > 0 && (
             <div className="relative mt-8">
+                {/* Header de progresso */}
                 <div className="mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm no-print">
                     <div className="flex justify-between text-sm mb-2">
-                        <span className="font-bold text-gray-700 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500"/> Progresso da Jornada</span>
-                        <span className="text-indigo-600 font-bold">{completedCount}/{totalCount} checkpoints</span>
+                        <span className="font-bold text-gray-700 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500"/> Plano de Ação</span>
+                        <span className="text-indigo-600 font-bold">{completedCount}/{totalCount} passos</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-3 border border-gray-100 overflow-hidden">
                         <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1" style={{ width: `${progress}%` }}></div>
@@ -315,7 +401,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                 </div>
 
                 <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-300 hidden md:block print:hidden"></div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-8 pl-4 print:pl-0">A Jornada (Checkpoints)</h3>
+                <h3 className="text-2xl font-bold text-gray-800 mb-8 pl-4 print:pl-0">Checklist de Estudo</h3>
                 <div className="space-y-8">
                 {guide.checkpoints.map((cp, idx) => {
                     const showDrawSection = cp.drawExactly && cp.drawExactly.trim().length > 0 && cp.drawLabel !== 'none';
@@ -333,7 +419,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                     <button onClick={() => handleToggleCheckpoint(idx)} className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center shrink-0 no-print ${cp.completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 text-transparent'}`} title={cp.completed ? 'Marcar como pendente' : 'Marcar como concluído'}><CheckCircle className="w-6 h-6" /></button>
                                     <div><span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black ${cp.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>Checkpoint #{idx + 1}</span><h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-emerald-900' : 'text-gray-900'}`}>{cp.mission}</h4></div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100 print:bg-white print:border print:border-black">
+                                <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100 print:bg-white print:border print:border-black print:text-black self-start md:self-auto">
                                     <Clock className="w-4 h-4" />
                                     <span>{cp.timestamp}</span>
                                 </div>
@@ -341,19 +427,16 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
 
                             <div className="p-6 space-y-6">
                                 <div className="flex gap-4">
-                                    <div className="mt-1"><Eye className="w-5 h-5 text-blue-500" /></div>
-                                    <div><h5 className="font-bold text-gray-700 text-sm uppercase mb-1">O que procurar:</h5><p className="text-gray-600 leading-relaxed">{cp.lookFor}</p></div>
+                                    <div className="mt-1"><Eye className="w-5 h-5 text-blue-500 print:text-black" /></div>
+                                    <div><h5 className="font-bold text-gray-700 text-sm uppercase mb-1">O que procurar:</h5><p className="text-gray-600 leading-relaxed print:text-black">{cp.lookFor}</p></div>
                                 </div>
 
                                 <div className="flex gap-4 bg-yellow-50/50 p-4 rounded-lg border border-yellow-100 print:bg-white print:border-gray-200">
-                                    <div className="mt-1"><PenTool className="w-5 h-5 text-orange-500" /></div>
+                                    <div className="mt-1"><PenTool className="w-5 h-5 text-orange-500 print:text-black" /></div>
                                     <div className="flex-1 w-full">
                                         <div className="flex justify-between items-center mb-1">
                                             <h5 className="font-bold text-gray-700 text-sm uppercase">Anotar Exatamente Isso:</h5>
-                                            <div className="flex gap-1 no-print">
-                                                <button onClick={() => handleFormat(idx, 'b')} className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs font-bold hover:bg-gray-50" title="Negrito">B</button>
-                                                <button onClick={() => handleFormat(idx, 'mark')} className="px-2 py-0.5 bg-yellow-100 border border-yellow-200 rounded text-xs font-bold text-yellow-800 hover:bg-yellow-200" title="Marca-texto">M</button>
-                                            </div>
+                                            {/* Botoes de formatacao REMOVIDOS daqui conforme solicitado */}
                                         </div>
                                         <textarea
                                             id={`note-textarea-${idx}`}
@@ -367,7 +450,7 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
 
                                 {showDrawSection && (
                                     <div className="flex gap-4 bg-purple-50/50 p-4 rounded-lg border border-purple-100 print:bg-white print:border-gray-200">
-                                        <div className="mt-1"><Edit className="w-5 h-5 text-purple-500" /></div>
+                                        <div className="mt-1"><Edit className="w-5 h-5 text-purple-500 print:text-black" /></div>
                                         <div className="flex-1">
                                             <div className="flex justify-between items-center mb-2">
                                                 <h5 className="font-bold text-purple-900 text-sm uppercase flex items-center gap-2">
@@ -380,42 +463,3 @@ ${cp.imageUrl ? `![Diagrama](${cp.imageUrl})` : ''}
                                                         disabled={loadingImage === idx}
                                                         className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded transition-colors flex items-center gap-1 no-print disabled:opacity-50"
                                                     >
-                                                        {loadingImage === idx ? 'Gerando...' : <><ImageIcon className="w-3 h-3"/> Gerar Diagrama AI</>}
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <p className="text-gray-700 italic border-l-2 border-purple-300 pl-3 mb-3">{cp.drawExactly}</p>
-                                            
-                                            {cp.imageUrl ? (
-                                                <div className="mt-2 rounded-lg overflow-hidden border border-purple-200 shadow-sm relative group">
-                                                     <img src={cp.imageUrl} alt="Diagrama gerado por IA" className="w-full h-auto max-h-64 object-contain bg-white" />
-                                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                                                         <button onClick={() => handleGenerateImage(idx, cp.drawExactly)} className="bg-white/80 p-1.5 rounded-full hover:bg-white text-purple-700 shadow-sm" title="Regerar Imagem"><RefreshCw className="w-4 h-4"/></button>
-                                                     </div>
-                                                </div>
-                                            ) : (
-                                                <div className="h-32 border-2 border-dashed border-purple-200 rounded-lg flex items-center justify-center text-purple-300 text-sm print:border-black">Espaço para desenho</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 print:bg-white print:border-black">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <HelpCircle className="w-4 h-4 text-indigo-500" />
-                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pergunta de Verificação</span>
-                                    </div>
-                                    <p className="font-bold text-gray-800">{cp.question}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    );
-                })}
-                </div>
-            </div>
-        )}
-      </div>
-    </div>
-  );
-};
