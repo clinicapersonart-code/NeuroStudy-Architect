@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
-// CORREÇÃO 1: Função padrão e segura para Vite na Vercel
+// Função para pegar a chave com segurança no Vite
 const getApiKey = (): string | undefined => {
   return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
 };
@@ -52,36 +52,87 @@ export const generateStudyGuide = async (
   if (!apiKey) throw new Error("Chave de API não encontrada (VITE_GEMINI_API_KEY).");
 
   const ai = new GoogleGenAI({ apiKey });
-  
-  // CORREÇÃO 2: Usando modelo ESTÁVEL (evita erro 404/400)
-  const modelName = 'gemini-2.0-flash'; 
+  const modelName = 'gemini-2.0-flash'; // Rápido, inteligente e estável
 
-  let modeInstructions = "MODO: NORMAL.";
-  if (mode === StudyMode.HARD) modeInstructions = "MODO: HARD (Detalhe Máximo).";
-  if (mode === StudyMode.SURVIVAL) modeInstructions = "MODO: SOBREVIVÊNCIA (Essencial).";
-  if (mode === StudyMode.PARETO) modeInstructions = "MODO: PARETO 80/20 (Foco no resultado).";
+  // --- ENGENHARIA DE PROMPT (MENTALIDADE DE MESTRIA) ---
+  let modeInstructions = "";
+  
+  switch (mode) {
+    case StudyMode.HARD:
+      modeInstructions = `
+      MODO: HARD (Especialista Técnico / Detalhista).
+      - FILOSOFIA: "O diabo mora nos detalhes."
+      - OBJETIVO: Dominar cada nuance, exceção e complexidade do conteúdo.
+      - ESTRUTURA: Quebre o conteúdo em micro-passos. Se houver dados técnicos, fórmulas ou processos complexos, crie um checkpoint específico para eles.
+      - PERGUNTAS: Devem ser desafiadoras, exigindo análise crítica e conexão de ideias.
+      - PÚBLICO: Alguém que precisa se tornar um expert no assunto.
+      `;
+      break;
+      
+    case StudyMode.SURVIVAL:
+      modeInstructions = `
+      MODO: SOBREVIVÊNCIA (Essencialismo / 80-20).
+      - FILOSOFIA: "Feito é melhor que perfeito. O que é vital?"
+      - OBJETIVO: Entender a estrutura geral e os pontos críticos o mais rápido possível.
+      - ESTRUTURA: Agrupe o conteúdo em 2 ou 3 grandes blocos lógicos. Ignore curiosidades ou aprofundamentos teóricos.
+      - PERGUNTAS: Focadas no básico inegociável (o que faria o aluno falhar se não soubesse).
+      - PÚBLICO: Alguém com pressa ou revisando antes da prática.
+      `;
+      break;
+      
+    case StudyMode.PARETO:
+      modeInstructions = `
+      MODO: PARETO 80/20 (Extração de Conhecimento).
+      - OBJETIVO: Leitura e resumo executivo.
+      - CHECKPOINTS: Array vazio [].
+      - OVERVIEW: Um resumo denso, rico e bem formatado em Markdown.
+      `;
+      break;
+      
+    case StudyMode.NORMAL:
+    default:
+      modeInstructions = `
+      MODO: NORMAL (Domínio Completo e Aprendizado Sólido).
+      - FILOSOFIA: "Entender para aplicar. Absorção máxima."
+      - OBJETIVO: Construir uma compreensão robusta que permita ao aluno explicar o assunto para outros.
+      - ESTRUTURA: Crie uma narrativa de aprendizado.
+        1. Comece pelos Fundamentos (O que é e Por que existe?).
+        2. Avance para o Mecanismo (Como funciona na prática?).
+        3. Termine com a Aplicação/Consequência (Como usar/Impactos reais).
+      - CHECKPOINTS: Crie entre 4 a 6 sessões de estudo. Evite ser raso. Se o texto for curto, expanda a análise pedindo para o aluno refletir sobre as implicações.
+      - PÚBLICO: Estudantes, profissionais e aprendizes que buscam competência real.
+      `;
+      break;
+  }
 
   const MASTER_PROMPT = `
-  Atue como Arquiteto de Aprendizagem.
-  Modo: ${mode}.
-  Idioma: PORTUGUÊS DO BRASIL (pt-BR).
+  Você é o NeuroStudy Architect, um Mentor de Aprendizado de Alta Performance.
   
-  ${modeInstructions}
-
-  SEU OBJETIVO:
-  Transformar o conteúdo fornecido em um GUIA DE ESTUDO ATIVO.
+  CONTEXTO:
+  O usuário enviou um material (pode ser técnico, acadêmico, prático ou teórico) e quer absorver o conhecimento contido nele.
   
-  PARA IMAGENS:
-  Analise visualmente cada detalhe, transcreva textos manuscritos e explique diagramas.
+  SUA MISSÃO:
+  1. Ler e interpretar o conteúdo com profundidade.
+  2. Aplicar a estratégia do modo selecionado: ${modeInstructions}
+  3. Gerar um roteiro prático e acionável em JSON.
 
-  SAÍDA OBRIGATÓRIA: APENAS JSON VÁLIDO seguindo o schema.
+  DIRETRIZES DE CHECKPOINT (A Jornada do Usuário):
+  - 'mission': Uma ordem direta e clara (ex: "Desconstrua o conceito X", "Analise o processo Y").
+  - 'lookFor': Onde está a informação chave no material.
+  - 'noteExactly': O "insight de ouro". A frase ou dado que resume a essência daquele bloco.
+  - 'question': Uma pergunta de "Active Recall" (Verificação) para garantir que ele entendeu, não apenas leu.
+
+  DIRETRIZES VISUAIS:
+  - Se o texto descrever processos, ciclos ou hierarquias, sugira um desenho em 'drawExactly'. Visualização ajuda a memória.
+
+  IDIOMA: Português do Brasil (pt-BR) 🇧🇷. Use uma linguagem clara, didática e profissional.
   `;
 
   const parts: any[] = [];
   
   if (isBinary) {
      parts.push({ inlineData: { mimeType: mimeType, data: content } });
-     parts.push({ text: "Analise este arquivo e gere o roteiro." });
+     parts.push({ text: "Analise este arquivo e gere o roteiro de aprendizado." });
   } else {
      parts.push({ text: content });
   }
@@ -94,11 +145,10 @@ export const generateStudyGuide = async (
         systemInstruction: MASTER_PROMPT,
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.4,
+        temperature: 0.35, // Equilíbrio entre precisão e fluidez didática
       },
     });
 
-    // Tratamento de resposta seguro
     let text = "";
     if (typeof (response as any).text === 'function') {
         text = (response as any).text();
@@ -130,7 +180,12 @@ export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
     
     const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
-        contents: { parts: [{ text: `Crie slides JSON para: ${guide.subject}. Baseado em: ${guide.overview}` }] },
+        contents: { parts: [{ text: `
+        Crie uma estrutura de aula (Slides JSON) sobre: "${guide.subject}".
+        Baseado no resumo: "${guide.overview}".
+        Objetivo: Ensinar o conteúdo de forma didática e envolvente.
+        Saída: Lista JSON de slides com 'title', 'bullets' e 'speakerNotes'.
+        ` }] },
         config: { responseMimeType: "application/json" }
     });
     
@@ -144,9 +199,21 @@ export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: 
     if (!apiKey) throw new Error("API Key missing");
     const ai = new GoogleGenAI({ apiKey });
     
+    // Nível adaptativo
+    let levelContext = "Perguntas equilibradas para testar compreensão e aplicação.";
+    if (mode === StudyMode.HARD) levelContext = "Perguntas desafiadoras, exigindo análise crítica e conexão de conceitos.";
+    if (mode === StudyMode.SURVIVAL) levelContext = "Perguntas fundamentais sobre os conceitos principais.";
+
+    const prompt = `
+    Crie um Quiz JSON com ${config?.quantity || 6} perguntas sobre ${guide.subject}.
+    Contexto: ${levelContext}
+    Conceitos chave: ${guide.coreConcepts.map(c => c.concept).join(', ')}.
+    Idioma: Português do Brasil.
+    `;
+
     const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
-        contents: { parts: [{ text: `Crie um Quiz JSON para: ${guide.subject}` }] },
+        contents: { parts: [{ text: prompt }] },
         config: { responseMimeType: "application/json" }
     });
     
@@ -162,7 +229,7 @@ export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]
     
     const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
-        contents: { parts: [{ text: `Crie Flashcards JSON para: ${guide.subject}` }] },
+        contents: { parts: [{ text: `Crie Flashcards JSON (Frente/Verso) para memorização ativa e retenção de longo prazo sobre: ${guide.subject}.` }] },
         config: { responseMimeType: "application/json" }
     });
     
@@ -176,9 +243,9 @@ export const sendChatMessage = async (history: ChatMessage[], msg: string, study
     if (!apiKey) return "Erro de API Key.";
     const ai = new GoogleGenAI({ apiKey });
     
-    let systemInstruction = "Você é um professor virtual.";
+    let systemInstruction = "Você é um Mentor de Aprendizado. Ajude o usuário a aprofundar seu conhecimento, tire dúvidas e dê exemplos práticos.";
     if (studyGuide) {
-        systemInstruction += ` Contexto: ${studyGuide.subject}.`;
+        systemInstruction += ` O usuário está estudando: ${studyGuide.subject}. Use este resumo como base: ${studyGuide.overview}`;
     }
 
     const chat = ai.chats.create({ 
@@ -197,10 +264,11 @@ export const refineContent = async (text: string, task: string): Promise<string>
     const ai = new GoogleGenAI({ apiKey });
     
     const prompt = `
-    Atue como um professor brasileiro.
+    Atue como um especialista em comunicação e didática.
     Tarefa: ${task}.
-    Conteúdo: "${text}"
-    OBRIGATÓRIO: Responda em PORTUGUÊS DO BRASIL (pt-BR).
+    Conteúdo Original: "${text}"
+    Objetivo: Tornar o conteúdo mais claro, memorável ou prático (conforme a tarefa).
+    Idioma: Português do Brasil.
     `;
 
     const response = await ai.models.generateContent({ 

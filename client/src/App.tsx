@@ -37,7 +37,7 @@ export function App() {
   };
 
   // Alterado: Default agora é 'app' para pular a landing page
-  const [view, setView] = useState<'landing' | 'app'>('app');
+const [view, setView] = useState<'landing' | 'app'>('landing'); // CORRETO: Começa na escolha
 
   // Folders & Studies (Mock Database)
   const [folders, setFolders] = useState<Folder[]>([
