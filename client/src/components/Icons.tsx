@@ -210,17 +210,48 @@ export const Smile = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
 );
 
-// MODERN GLASS TOMATO
+// REVISED LIQUID GLASS TOMATO ICON
 export const Tomato = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    {/* Glass Body with Tinted Fill */}
-    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" fill="currentColor" fillOpacity="0.15" />
-    {/* Leaves */}
-    <path d="M12 2a5 5 0 0 0-5 5" />
-    <path d="M12 2a5 5 0 0 1 5 5" />
-    <path d="M12 2v4" />
-    {/* Gloss Highlight */}
-    <path d="M6 7a8 8 0 0 1 8-4" strokeOpacity="0.5" />
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Drop Shadow */}
+    <ellipse cx="12" cy="21" rx="8" ry="1.5" fill="#000" fillOpacity="0.2" filter="blur(2px)"/>
+    
+    {/* Main Body - Red Glass */}
+    <path d="M12 22C17.5228 22 22 17.5228 22 12C22 7.05 18.5 3 12 3C5.5 3 2 7.05 2 12C2 17.5228 6.47715 22 12 22Z" fill="url(#tomatoGradient)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5"/>
+    
+    {/* Inner Glow / Volume */}
+    <circle cx="12" cy="12" r="9" fill="url(#innerGlow)" style={{mixBlendMode: 'overlay'}} />
+
+    {/* Top Highlight (Gloss) */}
+    <path d="M7 7C8.5 5 11 4.5 13 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.8"/>
+    <ellipse cx="9" cy="8" rx="2" ry="1" fill="white" fillOpacity="0.4" transform="rotate(-45 9 8)"/>
+
+    {/* Stem/Leaves */}
+    <path d="M12 2V5" stroke="#166534" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M12 5L10 3" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 5L14 3" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 5L9 6" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 5L15 6" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
+
+    {/* Timer Ticks (Subtle) */}
+    <path d="M12 18V19" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M18 12H19" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M6 12H5" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeLinecap="round"/>
+
+    {/* Center Arrow */}
+    <path d="M12 12L14 14L10 14L12 12Z" fill="white" fillOpacity="0.9"/>
+
+    <defs>
+      <linearGradient id="tomatoGradient" x1="6" y1="4" x2="18" y2="20" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#ef4444" />
+        <stop offset="50%" stopColor="#dc2626" />
+        <stop offset="100%" stopColor="#991b1b" />
+      </linearGradient>
+      <radialGradient id="innerGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(10 9) rotate(90) scale(10)">
+        <stop stopColor="white" stopOpacity="0.4"/>
+        <stop offset="1" stopColor="white" stopOpacity="0"/>
+      </radialGradient>
+    </defs>
   </svg>
 );
 
