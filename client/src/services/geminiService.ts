@@ -1,10 +1,9 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { StudyGuide, ChatMessage, Slide, QuizQuestion, Flashcard, StudyMode, InputType } from "../types";
 
-// Função para pegar a chave com segurança, compatível com Vite (import.meta.env)
+// CORREÇÃO 1: Função padrão e segura para Vite na Vercel
 const getApiKey = (): string | undefined => {
-  return (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || (window as any).process?.env?.API_KEY;
+  return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
 };
 
 const RESPONSE_SCHEMA: Schema = {
@@ -50,56 +49,40 @@ export const generateStudyGuide = async (
   isBinary: boolean = false
 ): Promise<StudyGuide> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Chave de API não encontrada.");
+  if (!apiKey) throw new Error("Chave de API não encontrada (VITE_GEMINI_API_KEY).");
 
   const ai = new GoogleGenAI({ apiKey });
   
-  // Alterado para gemini-2.0-flash conforme solicitado
-  const modelName = 'gemini-2.0-flash';
+  // CORREÇÃO 2: Usando modelo ESTÁVEL (evita erro 404/400)
+  const modelName = 'gemini-2.0-flash'; 
 
-  let modeInstructions = "MODO: NORMAL (Gere um roteiro ativo com checkpoints).";
-  
-  if (mode === StudyMode.HARD) modeInstructions = "MODO: HARD (Detalhe Máximo e Profundidade).";
-  if (mode === StudyMode.SURVIVAL) modeInstructions = "MODO: SOBREVIVÊNCIA (Apenas o essencial para passar).";
-  
-  // Instrução específica para Pareto: Foca na extração e resumo, ignora checkpoints
-  if (mode === StudyMode.PARETO) {
-      modeInstructions = `
-      MODO: PARETO 80/20 (RESUMO EXECUTIVO).
-      SEU OBJETIVO: Extrair e resumir o conteúdo.
-      1. 'overview': Deve ser um resumo completo, detalhado e bem estruturado do conteúdo. Use Markdown para títulos e bullet points.
-      2. 'coreConcepts': Liste os principais termos técnicos ou ideias chave e suas definições.
-      3. 'checkpoints': DEIXE ESTE ARRAY VAZIO []. Não crie missões de estudo. O usuário quer apenas ler o resumo.
-      `;
-  }
+  let modeInstructions = "MODO: NORMAL.";
+  if (mode === StudyMode.HARD) modeInstructions = "MODO: HARD (Detalhe Máximo).";
+  if (mode === StudyMode.SURVIVAL) modeInstructions = "MODO: SOBREVIVÊNCIA (Essencial).";
+  if (mode === StudyMode.PARETO) modeInstructions = "MODO: PARETO 80/20 (Foco no resultado).";
 
   const MASTER_PROMPT = `
-  Atue como o melhor Arquiteto de Aprendizagem do mundo.
-  Modo de Estudo: ${mode}.
+  Atue como Arquiteto de Aprendizagem.
+  Modo: ${mode}.
   Idioma: PORTUGUÊS DO BRASIL (pt-BR).
   
   ${modeInstructions}
 
-  PARA O MODO PARETO:
-  Ignore a estrutura de "Roteiro de Estudo Ativo". Foque 100% em extrair o texto, resumir as ideias principais e listar os conceitos chave. O campo 'overview' deve ser rico e conter a essência do arquivo (os 20% que explicam 80% do conteúdo).
-
-  PARA OUTROS MODOS:
-  Transforme o conteúdo fornecido em um GUIA DE ESTUDO ATIVO estruturado com checkpoints.
-
-  PARA IMAGENS (CADERNOS/LOUSAS):
-  Analise visualmente cada detalhe. Transcreva textos manuscritos com precisão.
+  SEU OBJETIVO:
+  Transformar o conteúdo fornecido em um GUIA DE ESTUDO ATIVO.
   
+  PARA IMAGENS:
+  Analise visualmente cada detalhe, transcreva textos manuscritos e explique diagramas.
+
   SAÍDA OBRIGATÓRIA: APENAS JSON VÁLIDO seguindo o schema.
   `;
 
   const parts: any[] = [];
   
   if (isBinary) {
-     // Para PDF, Imagem, Vídeo
      parts.push({ inlineData: { mimeType: mimeType, data: content } });
-     parts.push({ text: "Analise este arquivo detalhadamente." });
+     parts.push({ text: "Analise este arquivo e gere o roteiro." });
   } else {
-     // Para Texto, URL, DOI
      parts.push({ text: content });
   }
 
@@ -111,19 +94,25 @@ export const generateStudyGuide = async (
         systemInstruction: MASTER_PROMPT,
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA,
+        temperature: 0.4,
       },
     });
 
-    const text = response.text || "";
+    // Tratamento de resposta seguro
+    let text = "";
+    if (typeof (response as any).text === 'function') {
+        text = (response as any).text();
+    } else if ((response as any).text) {
+        text = (response as any).text;
+    } else {
+        text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    }
 
     if (!text) throw new Error("Sem resposta da IA.");
 
-    // Limpeza robusta de Markdown JSON
     const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
     const guide = JSON.parse(cleanText) as StudyGuide;
     
-    // Inicializa status de checkpoints
     if (guide.checkpoints) {
         guide.checkpoints = guide.checkpoints.map(cp => ({ ...cp, completed: false }));
     }
@@ -141,13 +130,12 @@ export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
     
     const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
-        contents: { parts: [{ text: `Crie slides JSON para apresentação de aula sobre: ${guide.subject}. Baseado no overview: ${guide.overview}` }] },
+        contents: { parts: [{ text: `Crie slides JSON para: ${guide.subject}. Baseado em: ${guide.overview}` }] },
         config: { responseMimeType: "application/json" }
     });
     
-    let text = response.text || "";
+    let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
     return JSON.parse(text || "[]");
 };
 
@@ -156,17 +144,14 @@ export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: 
     if (!apiKey) throw new Error("API Key missing");
     const ai = new GoogleGenAI({ apiKey });
     
-    const prompt = `Crie um Quiz JSON desafiador para: ${guide.subject}. Dificuldade: ${config?.difficulty || 'mista'}. Quantidade: ${config?.quantity || 6} questões.`;
-
     const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
-        contents: { parts: [{ text: prompt }] },
+        contents: { parts: [{ text: `Crie um Quiz JSON para: ${guide.subject}` }] },
         config: { responseMimeType: "application/json" }
     });
     
-    let text = response.text || "";
+    let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
     return JSON.parse(text || "[]");
 };
 
@@ -177,13 +162,12 @@ export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]
     
     const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
-        contents: { parts: [{ text: `Crie Flashcards JSON (Frente/Verso) para memorização de: ${guide.subject}` }] },
+        contents: { parts: [{ text: `Crie Flashcards JSON para: ${guide.subject}` }] },
         config: { responseMimeType: "application/json" }
     });
     
-    let text = response.text || "";
+    let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
     return JSON.parse(text || "[]");
 };
 
@@ -192,9 +176,9 @@ export const sendChatMessage = async (history: ChatMessage[], msg: string, study
     if (!apiKey) return "Erro de API Key.";
     const ai = new GoogleGenAI({ apiKey });
     
-    let systemInstruction = "Você é um professor virtual socrático e prestativo. Ajude o aluno a entender profundamente.";
+    let systemInstruction = "Você é um professor virtual.";
     if (studyGuide) {
-        systemInstruction += ` O aluno está estudando: ${studyGuide.subject}. Contexto do guia: ${studyGuide.overview}.`;
+        systemInstruction += ` Contexto: ${studyGuide.subject}.`;
     }
 
     const chat = ai.chats.create({ 
@@ -212,25 +196,19 @@ export const refineContent = async (text: string, task: string): Promise<string>
     if (!apiKey) return "Erro de API Key.";
     const ai = new GoogleGenAI({ apiKey });
     
-    // Explicitly enforce Brazilian Portuguese
     const prompt = `
-    Atue como um professor brasileiro experiente e criativo.
-    
-    SUA MISSÃO: Refinar o seguinte conteúdo realizando esta tarefa: "${task}".
-    CONTEÚDO ORIGINAL: "${text}"
-
-    REGRAS OBRIGATÓRIAS:
-    1. A resposta deve ser EXCLUSIVAMENTE em PORTUGUÊS DO BRASIL (pt-BR). Não use inglês.
-    2. Se a tarefa for criar uma piada ("joke"), use humor culturalmente relevante para brasileiros, se possível.
-    3. Se for mnemônico, crie algo fácil de lembrar em português.
-    4. Seja direto: entregue apenas o resultado refinado, sem introduções como "Aqui está".
+    Atue como um professor brasileiro.
+    Tarefa: ${task}.
+    Conteúdo: "${text}"
+    OBRIGATÓRIO: Responda em PORTUGUÊS DO BRASIL (pt-BR).
     `;
 
     const response = await ai.models.generateContent({ 
         model: 'gemini-2.0-flash', 
         contents: { parts: [{ text: prompt }] } 
     });
-    return response.text || "";
+    const raw = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+    return raw || "";
 };
 
 export const generateDiagram = async (desc: string): Promise<string> => { return ""; };
