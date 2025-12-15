@@ -7,11 +7,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: false, // Desativa mapas para economizar memória
-    chunkSizeWarningLimit: 1600, // Aumenta limite de tamanho
+    sourcemap: false,
+    chunkSizeWarningLimit: 1600,
     rollupOptions: {
       onwarn(warning, warn) {
-        // Ignora o erro específico "MODULE_LEVEL_DIRECTIVE" que trava builds na Vercel
         if (warning.code === 'MODULE_LEVEL_DIRECTIVE') {
           return;
         }
