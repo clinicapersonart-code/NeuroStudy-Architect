@@ -63,7 +63,7 @@ export function App() {
     }
   }, []);
 
-  // Carrega dados ao autorizar
+  // Carrega dados
   useEffect(() => {
     if (isAuthorized) {
         const initData = async () => {
@@ -109,7 +109,7 @@ export function App() {
     setView('landing');
   };
 
-  // --- CRUD ---
+  // --- CRUD BÁSICO ---
   const createFolder = (name: string, parentId?: string) => { 
       const newFolder: Folder = { id: Date.now().toString(), name, parentId }; 
       setFolders(prev => [...prev, newFolder]); 
@@ -185,15 +185,19 @@ export function App() {
     setProcessingState({ isLoading: true, error: null, step: source.type === InputType.VIDEO ? 'transcribing' : 'analyzing' });
     
     try {
+        // Timer visual para simular progresso
         const timer = setTimeout(() => setProcessingState(p => ({...p, step: 'generating'})), 3000);
+        
         const guide = await generateStudyGuide(source.content, source.mimeType || 'text/plain', mode, isBinary, isBook);
         clearTimeout(timer);
+        
         updateStudy(studyId, { guide });
         setProcessingState({ isLoading: false, error: null, step: 'idle' });
         setActiveTab('guide');
     } catch (e: any) { 
         console.error("Erro ao gerar roteiro:", e);
-        setProcessingState({ isLoading: false, error: e.message || "Erro desconhecido.", step: 'idle' }); 
+        // MOSTRA O ERRO NA TELA
+        setProcessingState({ isLoading: false, error: e.message || "Erro desconhecido ao gerar roteiro.", step: 'idle' }); 
     }
   };
 
@@ -221,9 +225,9 @@ export function App() {
   const handleFolderExam = (fid: string) => {}; 
   const renderSourceDescription = (t: InputType) => null;
 
-  // --- RENDER CONTENT (VISUAL RESTAURADO) ---
+  // --- RENDER CONTENT (CORRIGIDO) ---
   const renderMainContent = () => {
-    // 1. TELA INICIAL (DASHBOARD) - COM BOTÕES BONITOS DE VOLTA
+    // 1. TELA INICIAL (DASHBOARD)
     if (!activeStudy) {
       return (
         <div className="flex flex-col h-full bg-slate-50 overflow-y-auto animate-in fade-in slide-in-from-bottom-4">
@@ -281,4 +285,128 @@ export function App() {
       <div className="max-w-5xl mx-auto space-y-6">
           {/* ALERTA DE ERRO */}
           {processingState.error && (
-              <div className="bg-red-50 text-red-60
+              <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2">
+                      <span className="font-bold">⚠️ Erro:</span> {processingState.error}
+                  </div>
+                  <button onClick={() => setProcessingState(p => ({...p, error: null}))}><X className="w-4 h-4"/></button>
+              </div>
+          )}
+
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+              <button onClick={() => setActiveTab('sources')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeTab === 'sources' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Fontes</button>
+              <button onClick={() => setActiveTab('guide')} disabled={!activeStudy.guide} className="px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50">Roteiro</button>
+              {!isParetoStudy && <button onClick={() => setActiveTab('quiz')} disabled={!activeStudy.quiz} className="px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50">Quiz</button>}
+          </div>
+
+          {activeTab === 'sources' && (
+              <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                      <div className="flex gap-2 mb-4">
+                          <button onClick={() => setInputType(InputType.TEXT)} className={`px-3 py-1 rounded text-sm ${inputType === InputType.TEXT ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`}>Texto</button>
+                          <button onClick={() => setInputType(InputType.PDF)} className={`px-3 py-1 rounded text-sm ${inputType === InputType.PDF ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`}>PDF</button>
+                      </div>
+                      {inputType === InputType.TEXT ? (
+                          <textarea value={inputText} onChange={e => setInputText(e.target.value)} className="w-full h-32 border rounded-lg p-3 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Cole seu texto..." />
+                      ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors relative cursor-pointer">
+                              <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setSelectedFile(e.target.files?.[0] || null)} />
+                              <div className="flex flex-col items-center gap-2 text-gray-500">
+                                  {selectedFile ? <><FileText className="w-8 h-8 text-indigo-500"/><span className="font-bold text-gray-900">{selectedFile.name}</span></> : <><UploadCloud className="w-8 h-8"/><span className="font-medium">Clique ou arraste o arquivo aqui</span></>}
+                              </div>
+                          </div>
+                      )}
+                      <button onClick={addSourceToStudy} className="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors">Adicionar</button>
+                  </div>
+                  
+                  {activeStudy.sources.map(s => (
+                      <div key={s.id} className="bg-white p-4 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
+                          <div className="flex items-center gap-3">
+                              <div className="bg-indigo-50 p-2 rounded text-indigo-600"><FileText className="w-5 h-5"/></div>
+                              <span className="font-medium text-gray-700">{s.name}</span>
+                          </div>
+                          <button onClick={() => removeSource(s.id)} className="text-gray-400 hover:text-red-500"><Trash className="w-5 h-5"/></button>
+                      </div>
+                  ))}
+                  
+                  {!activeStudy.isBook && activeStudy.sources.length > 0 && (
+                      <button onClick={() => handleGenerateGuideForStudy(activeStudy.id, activeStudy.sources[0], activeStudy.mode, false)} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-indigo-200 hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
+                          <GenerateIcon className="w-6 h-6"/> Gerar Roteiro
+                      </button>
+                  )}
+              </div>
+          )}
+
+          {activeTab === 'guide' && activeStudy.guide && <ResultsView guide={activeStudy.guide} onReset={()=>{}} onGenerateQuiz={handleGenerateQuiz} onGoToFlashcards={handleGenerateFlashcards} />}
+          {activeTab === 'quiz' && activeStudy.quiz && <QuizView questions={activeStudy.quiz} onGenerate={handleGenerateQuiz} onClear={() => updateStudy(activeStudyId!, { quiz: null })} />}
+      </div>
+    );
+  };
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md text-center">
+          <NeuroLogo size={60} className="mx-auto mb-6 text-indigo-600"/>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">NeuroStudy Architect</h1>
+          <input type="password" placeholder="Senha de acesso" className="w-full px-4 py-3 rounded-lg border border-gray-300 mb-4" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} autoFocus />
+          <button onClick={handleLogin} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700">Entrar</button>
+          <div className="mt-4 text-xs text-gray-400">Use 'convidado' para acesso Free</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'landing') {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-white">
+            <div className="text-center">
+                <NeuroLogo size={100} className="mx-auto mb-6"/>
+                <h1 className="text-4xl font-bold text-slate-900 mb-4">Bem-vindo, {isPro ? 'Pro' : 'Convidado'}</h1>
+                <button onClick={() => setView('app')} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">Ir para o Painel</button>
+            </div>
+        </div>
+      );
+  }
+
+  return (
+    <div className="flex h-screen bg-white font-sans text-slate-800 overflow-hidden">
+      <Sidebar 
+        folders={folders} studies={studies} activeStudyId={activeStudyId} 
+        onSelectStudy={setActiveStudyId} onCreateFolder={createFolder} 
+        onCreateStudy={(fid, t) => createStudy(fid, t)} 
+        onDeleteStudy={deleteStudy} onDeleteFolder={deleteFolder}
+        onRenameFolder={renameFolder} onMoveFolder={moveFolder} onMoveStudy={moveStudy}
+        onOpenMethodology={() => setShowMethodologyModal(true)} onFolderExam={() => {}} onGoToHome={() => setView('landing')}
+      />
+      
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header className="flex justify-between items-center p-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm z-10">
+           <div className="flex items-center gap-4">
+               <button className="md:hidden" onClick={() => setIsMobileMenuOpen(true)}><Menu className="w-6 h-6" /></button>
+               {activeStudy ? (
+                   <h1 className="font-bold text-xl">{activeStudy.title}</h1>
+               ) : ( 
+                   <div className="flex items-center gap-3">
+                       <h1 className="text-xl font-bold text-gray-400 flex items-center gap-2"><NeuroLogo size={24} className="grayscale opacity-50"/> Painel</h1>
+                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${isPro ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                           {isPro ? '✨ PRO' : '☁️ FREE'}
+                       </span>
+                   </div>
+               )}
+           </div>
+           <button onClick={handleLogout} className="text-xs text-red-500 hover:underline">Sair</button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8">
+          {renderMainContent()}
+        </div>
+
+        <PomodoroTimer />
+        <ChatWidget studyGuide={activeStudy?.guide || null} />
+        {showMethodologyModal && <MethodologyModal onClose={() => setShowMethodologyModal(false)} />}
+        {previewSource && <SourcePreviewModal source={previewSource} onClose={() => setPreviewSource(null)} />}
+      </div>
+    </div>
+  );
+}
