@@ -63,7 +63,10 @@ export function App() {
     }
   }, []);
 
+  // Carrega dados ao autorizar
   useEffect(() => {
+    if (!isAuthorized && view !== 'landing') return;
+    
     if (isAuthorized) {
         const initData = async () => {
           try {
@@ -77,7 +80,7 @@ export function App() {
         };
         initData();
     }
-  }, [isAuthorized]);
+  }, [isAuthorized, view]);
 
   // --- SALVAMENTO AUTOMÁTICO ---
   useEffect(() => {
@@ -211,7 +214,8 @@ export function App() {
   const handleFolderExam = (fid: string) => {}; 
   const renderSourceDescription = (t: InputType) => null;
 
-  // --- RENDER CONTENT SEPARADO (AQUI ESTÁ A CORREÇÃO) ---
+  // --- RENDER CONTENT (AQUI ESTÁ A CORREÇÃO MÁGICA) ---
+  // Separei a lógica para não confundir o compilador com muitos sinais de ? e :
   const renderMainContent = () => {
     if (!activeStudy) {
       return (
@@ -230,6 +234,25 @@ export function App() {
       );
     }
 
+    // TELA DE CONFIGURAÇÃO DE LIVRO (SE FOR LIVRO E NÃO TIVER ROTEIRO)
+    if (activeStudy.isBook && !activeStudy.guide) {
+       return (
+           <div className="flex flex-col items-center justify-center min-h-[50vh] animate-fade-in">
+               <div className="text-center mb-8">
+                   <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-orange-200"><BookOpen className="w-10 h-10"/></div>
+                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Configurar Resumo do Livro</h2>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl w-full px-4">
+                   <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.SURVIVAL)} className={`p-6 rounded-2xl border-2 text-left ${activeStudy.mode === StudyMode.SURVIVAL ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white'}`}><h3 className="font-bold">Sobrevivência</h3><p className="text-xs mt-2">Resumo 80/20 rápido.</p></button>
+                   <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.NORMAL)} className={`p-6 rounded-2xl border-2 text-left ${activeStudy.mode === StudyMode.NORMAL ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white'}`}><h3 className="font-bold">Normal</h3><p className="text-xs mt-2">Capítulo a capítulo.</p></button>
+                   <button onClick={() => updateStudyMode(activeStudy.id, StudyMode.HARD)} className={`p-6 rounded-2xl border-2 text-left ${activeStudy.mode === StudyMode.HARD ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white'}`}><h3 className="font-bold">Hard</h3><p className="text-xs mt-2">Análise profunda.</p></button>
+               </div>
+               <button onClick={handleGenerateGuide} className="mt-8 bg-orange-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-orange-600 flex items-center gap-2"><Play className="w-5 h-5 fill-current" /> Gerar Resumo</button>
+           </div>
+       );
+    }
+
+    // TELA PRINCIPAL DO ESTUDO
     return (
       <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex gap-2 overflow-x-auto pb-2">
@@ -328,7 +351,7 @@ export function App() {
         </header>
 
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8">
-          {renderMainContent()}
+          {renderMainContent()} {/* <--- AQUI ESTÁ A CORREÇÃO */}
         </div>
 
         <PomodoroTimer />
