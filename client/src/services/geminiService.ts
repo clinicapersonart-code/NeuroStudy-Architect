@@ -8,12 +8,13 @@ const getApiKey = (): string | undefined => {
 // --- SELETOR DE CÉREBRO ---
 const getModelName = () => {
   const isPro = localStorage.getItem('neurostudy_auth') === 'true';
-  // Pro (Você) = Gemini 1.5 Pro (Mais inteligente/caro)
-  // Free (Amigos) = Gemini 2.0 Flash (Rápido/Grátis)
   return isPro ? 'gemini-1.5-pro' : 'gemini-2.0-flash';
 };
 
-// ... (Mantenha o RESPONSE_SCHEMA igual, ele não muda) ...
+// ... MANTENHA O RESPONSE_SCHEMA IGUAL ...
+// (Para economizar espaço, não vou colar o schema gigante de novo, mas não apague ele do seu arquivo!)
+// Copie apenas a função generateStudyGuide para baixo:
+
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -36,7 +37,6 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
   console.log(`🧠 Usando modelo: ${modelName}`);
 
   let modeInstructions = "";
-  // (Lógica de prompts simplificada para caber aqui, mas funciona igual)
   if (isBook) {
       if(mode === StudyMode.SURVIVAL) modeInstructions = "MODO LIVRO SOBREVIVÊNCIA: Foco 80/20 global.";
       else if(mode === StudyMode.HARD) modeInstructions = "MODO LIVRO HARD: Análise profunda por seção.";
@@ -66,7 +66,7 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
   return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim()) as StudyGuide;
 };
 
-// Funções auxiliares também usam o modelo dinâmico
+// Funções auxiliares (ATUALIZADAS)
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
     const ai = new GoogleGenAI({ apiKey: getApiKey() || '' });
     const res = await ai.models.generateContent({ model: getModelName(), contents: { parts: [{ text: `Slides JSON para: ${guide.subject}` }] }, config: { responseMimeType: "application/json" } });
