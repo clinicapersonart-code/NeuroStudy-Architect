@@ -266,6 +266,7 @@ export function App() {
   const handleQuickStart = async (content: string | File, type: InputType, mode: StudyMode = StudyMode.NORMAL, autoGenerate: boolean = false) => {
     let folderId = 'quick-studies';
     let quickFolder = folders.find(f => f.id === folderId);
+    
     if (!quickFolder) {
         const newFolder = { id: folderId, name: '⚡ Estudos Rápidos' };
         setFolders(prev => [...prev, newFolder]);
@@ -405,9 +406,6 @@ export function App() {
 
   const handleGenerateGuide = async () => {
     if (!activeStudy || activeStudy.sources.length === 0) return;
-    // Always take the last source? Or maybe all sources? For now, the prompt handles single main content usually, 
-    // but the request implies "add sources" then "generate". We'll take the latest added source as main for now or update logic to combine.
-    // NOTE: Current generateStudyGuide accepts one content string.
     const source = activeStudy.sources[activeStudy.sources.length - 1]; 
     handleGenerateGuideForStudy(activeStudy.id, source, activeStudy.mode);
   };
@@ -456,7 +454,6 @@ export function App() {
     setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, quiz: null } : s));
   };
 
-  // Alterado para apenas criar a sala e não adicionar conteúdo ainda
   const handleStartSession = () => {
       const modeName = selectedMode === StudyMode.SURVIVAL ? 'Sobrevivência' : selectedMode === StudyMode.HARD ? 'Hard' : 'Normal';
       createStudy('default', `Novo Estudo (${modeName})`, selectedMode);
@@ -510,7 +507,6 @@ export function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
         <header className="px-8 py-6 flex justify-between items-center bg-white border-b border-gray-200">
             <div className="flex items-center gap-2">
-                {/* LOGO NO HEADER DA LANDING PAGE */}
                 <div className="flex items-center gap-2">
                     <NeuroLogo size={40} className="text-indigo-600" />
                     <span className="font-extrabold text-slate-900 tracking-tight text-xl">NeuroStudy</span>
@@ -524,11 +520,9 @@ export function App() {
                 <div className="space-y-4">
                     <span className="inline-block py-1 px-3 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-widest border border-indigo-100">Neurociência Aplicada</span>
                     
-                    {/* HERO LOGO - CENTRALIZADO E GRANDE */}
-                    <div className="flex justify-center mb-6">
-                        <div className="p-1 bg-gradient-to-br from-indigo-50 to-white rounded-[2rem] shadow-xl border border-indigo-100">
-                            <NeuroLogo size={100} className="text-indigo-600" />
-                        </div>
+                    {/* HERO LOGO - LIMPO E CENTRALIZADO */}
+                    <div className="flex justify-center mb-8">
+                        <NeuroLogo size={130} className="drop-shadow-2xl" />
                     </div>
                     
                     <h2 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">Pare de estudar.<br/><span className="text-indigo-600">Comece a aprender.</span></h2>
@@ -584,7 +578,6 @@ export function App() {
             </div>
         </main>
         
-        {/* LANDING PAGE FOOTER */}
         <footer className="py-6 text-center border-t border-gray-200 bg-white">
             <p className="text-sm text-gray-500 font-medium">
                 Desenvolvido por <span className="text-gray-900 font-bold">Bruno Alexandre</span>
@@ -616,6 +609,8 @@ export function App() {
                     folders={folders} 
                     studies={studies} 
                     activeStudyId={activeStudyId} 
+                    selectedMode={selectedMode} 
+                    onSelectMode={setSelectedMode} 
                     onSelectStudy={setActiveStudyId} 
                     onCreateFolder={createFolder} 
                     onRenameFolder={renameFolder}
@@ -668,7 +663,7 @@ export function App() {
             ) : (
                 <h1 className="text-xl font-bold text-gray-400 flex items-center gap-2">
                     <NeuroLogo size={24} className="grayscale opacity-50"/>
-                    Selecione ou crie um estudo
+                    Criar Novo Estudo
                 </h1>
             )}
           </div>
