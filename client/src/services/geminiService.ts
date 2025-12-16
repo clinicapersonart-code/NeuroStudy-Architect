@@ -5,9 +5,9 @@ const getApiKey = (): string | undefined => {
   return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
 };
 
-// --- CONFIGURAÇÃO ---
-// Use 'gemini-1.5-flash' para estabilidade total. O 2.0 é experimental e falha frequentemente.
-const MODEL_NAME = 'gemini-1.5-flash'; 
+// --- CONFIGURAÇÃO CORRIGIDA ---
+// Usando a versão específica "001" para evitar erro 404 de modelo não encontrado
+const MODEL_NAME = 'gemini-1.5-flash-001'; 
 
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
@@ -218,8 +218,11 @@ export const generateStudyGuide = async (
     return guide;
   } catch (error: any) {
     console.error("[Gemini] Erro Crítico:", error);
-    // Repassa o erro para o App mostrar na tela
-    throw new Error(error.message || "Erro ao gerar conteúdo com IA.");
+    // Tenta uma mensagem de erro mais amigável
+    let msg = error.message || "Erro desconhecido na API.";
+    if (msg.includes("404")) msg = "Modelo de IA não encontrado ou indisponível na sua região.";
+    if (msg.includes("429")) msg = "Muitas requisições. Tente novamente em 1 minuto.";
+    throw new Error(msg);
   }
 };
 
