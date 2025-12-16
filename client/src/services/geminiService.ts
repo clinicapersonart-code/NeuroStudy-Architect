@@ -6,9 +6,9 @@ const getApiKey = (): string | undefined => {
 };
 
 // --- CONFIGURAÇÃO ---
-const MODEL_NAME = 'gemini-2.0-flash'; // Modelo rápido e com visão
+const MODEL_NAME = 'gemini-2.0-flash'; 
 
-// Schemas (Mantidos iguais ao anterior)
+// Schemas
 const COMMON_PROPERTIES = {
   subject: { type: Type.STRING },
   overview: { type: Type.STRING },
@@ -94,13 +94,11 @@ const CHAPTERS_PROPERTY = {
   }
 };
 
-// --- FUNÇÃO AUXILIAR: UPLOAD DE ARQUIVO (FILE API) ---
-// Faz upload do arquivo para o Google e retorna a URI
+// Helpers
 async function uploadFileToGemini(base64Data: string, mimeType: string): Promise<string> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("API Key missing");
 
-  // 1. Converter Base64 de volta para Blob (necessário para upload)
   const byteCharacters = atob(base64Data);
   const byteNumbers = new Array(byteCharacters.length);
   for (let i = 0; i < byteCharacters.length; i++) {
@@ -109,10 +107,7 @@ async function uploadFileToGemini(base64Data: string, mimeType: string): Promise
   const byteArray = new Uint8Array(byteNumbers);
   const blob = new Blob([byteArray], { type: mimeType });
 
-  // 2. Iniciar Upload Resumível (Resumable Upload)
-  // Nota: Estamos usando fetch direto porque a SDK às vezes tem bugs em ambientes browser-only
   const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
-  
   const initialResponse = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
@@ -128,7 +123,6 @@ async function uploadFileToGemini(base64Data: string, mimeType: string): Promise
   const uploadHeader = initialResponse.headers.get('x-goog-upload-url');
   if (!uploadHeader) throw new Error("Falha ao iniciar upload no Google AI.");
 
-  // 3. Enviar os dados
   const uploadResponse = await fetch(uploadHeader, {
     method: 'POST',
     headers: {
@@ -141,13 +135,9 @@ async function uploadFileToGemini(base64Data: string, mimeType: string): Promise
   });
 
   const uploadResult = await uploadResponse.json();
-  const fileUri = uploadResult.file.uri;
-  
-  console.log("Arquivo enviado para Google AI:", fileUri);
-  return fileUri;
+  return uploadResult.file.uri;
 }
 
-// --- RETRY LOGIC ---
 async function fetchWithRetry<T>(operation: () => Promise<T>, retries = 3, delay = 5000): Promise<T> {
   try {
     return await operation();
@@ -184,35 +174,17 @@ export const generateStudyGuide = async (
   if (isBook) {
     switch (mode) {
       case StudyMode.SURVIVAL:
-        modeInstructions = `
-        MODO LIVRO: SOBREVIVÊNCIA (Pareto Extremo)
-        - ESTRUTURA: Liste TODOS os capítulos.
-        - DENSIDADE: 1 frase por capítulo. 1 conceito chave.
-        - SUPORTE: NÃO GERE.
-        `;
-        break;
+        modeInstructions = `MODO: SOBREVIVÊNCIA LIVRO. Liste TODOS os capítulos. Resumo de 1 frase. 1 conceito. SUPORTE: NÃO GERE.`; break;
       case StudyMode.HARD:
-        modeInstructions = `
-        MODO LIVRO: HARD (Deep Dive)
-        - ESTRUTURA: Liste TODOS os capítulos e seções.
-        - DENSIDADE: Resumo detalhado.
-        - SUPORTE: Gere lista robusta.
-        `;
-        break;
+        modeInstructions = `MODO: HARD LIVRO. Liste TODOS os capítulos e seções. Detalhado. SUPORTE: Gere lista robusta.`; break;
       case StudyMode.NORMAL:
       default:
-        modeInstructions = `
-        MODO LIVRO: NORMAL (Equilíbrio)
-        - ESTRUTURA: Liste TODOS os capítulos.
-        - DENSIDADE: Pareto (20% essencial).
-        - SUPORTE: Gere para contextualizar.
-        `;
-        break;
+        modeInstructions = `MODO: NORMAL LIVRO. Liste TODOS os capítulos. Pareto (20% essencial). SUPORTE: Contextualize.`; break;
     }
   } else {
     const noChaptersInstruction = "NÃO GERE 'chapters'.";
     if (mode === StudyMode.HARD) {
-      modeInstructions = `MODO: TURBO 🚀 (Completo). ${noChaptersInstruction} SUPORTE: OBRIGATÓRIO.`;
+      modeInstructions = `MODO: TURBO 🚀. ${noChaptersInstruction} SUPORTE: OBRIGATÓRIO.`;
     } else if (mode === StudyMode.SURVIVAL) {
       modeInstructions = `MODO: SOBREVIVÊNCIA ⚡. ${noChaptersInstruction} SUPORTE: NÃO PREENCHA.`;
     } else {
@@ -222,46 +194,27 @@ export const generateStudyGuide = async (
 
   const MASTER_PROMPT = `
   Você é o NeuroStudy Architect.
-  CONTEXTO: O usuário enviou conteúdo (${isBook ? 'LIVRO' : 'Material'}) para processamento.
+  CONTEXTO: Conteúdo (${isBook ? 'LIVRO' : 'Material'}).
   MISSÃO:
-  1. Analisar conteúdo.
+  1. Analisar.
   2. Estratégia: ${modeInstructions}
   3. JSON estrito.
-  IDIOMA: Português do Brasil.
   `;
 
-  // --- LÓGICA HÍBRIDA (INLINE vs FILE API) ---
   const parts: any[] = [];
-  
   if (isBinary) {
-     // SE O ARQUIVO FOR GRANDE (> 15MB) OU FOR VÍDEO/ÁUDIO, USA A FILE API
      const isVideoOrAudio = mimeType.startsWith('video/') || mimeType.startsWith('audio/');
-     const isLargeFile = content.length > 15 * 1024 * 1024; // ~11MB em base64
+     const isLargeFile = content.length > 15 * 1024 * 1024;
 
      if (isVideoOrAudio || isLargeFile) {
-         console.log("Arquivo grande ou mídia detectada. Usando File API...");
          try {
-             // 1. Faz upload
              const fileUri = await uploadFileToGemini(content, mimeType);
-             
-             // 2. Passa a URI para o modelo (não o base64)
-             parts.push({
-                 fileData: {
-                     mimeType: mimeType,
-                     fileUri: fileUri
-                 }
-             });
-             
-             // Se for vídeo, damos uma dica extra para analisar o vídeo todo
-             if (isVideoOrAudio) {
-                 parts.push({ text: "Analise este vídeo/áudio completo. Transcreva mentalmente os pontos chaves e gere o roteiro." });
-             }
+             parts.push({ fileData: { mimeType: mimeType, fileUri: fileUri } });
+             if (isVideoOrAudio) parts.push({ text: "Analise este arquivo de mídia completo." });
          } catch (e) {
-             console.error("Erro no upload File API:", e);
-             throw new Error("Falha ao processar arquivo grande. Tente um arquivo menor.");
+             throw new Error("Falha ao processar arquivo grande.");
          }
      } else {
-         // ARQUIVO PEQUENO (PDF leve, Imagem simples) -> Manda direto (Inline)
          parts.push({ inlineData: { mimeType: mimeType, data: content } });
      }
      parts.push({ text: "Gere o roteiro de aprendizado." });
@@ -270,7 +223,6 @@ export const generateStudyGuide = async (
   }
 
   return fetchWithRetry(async () => {
-    console.log(`[Gemini] Gerando com ${MODEL_NAME}...`);
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: { role: 'user', parts: parts },
@@ -295,7 +247,6 @@ export const generateStudyGuide = async (
   });
 };
 
-// ... Restante das funções (safeGenerate, generateSlides...) mantidas iguais ...
 const safeGenerate = async (ai: GoogleGenAI, prompt: string, schemaMode = true): Promise<string> => {
     return fetchWithRetry(async () => {
         const config: any = {};
@@ -308,6 +259,32 @@ const safeGenerate = async (ai: GoogleGenAI, prompt: string, schemaMode = true):
         let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
         return text || "";
     });
+};
+
+// --- IMPLEMENTAÇÃO DO DIAGRAMA SIMPLES ---
+export const generateDiagram = async (desc: string): Promise<string> => { 
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("Erro de API.");
+    const ai = new GoogleGenAI({ apiKey });
+
+    try {
+        // Pedimos para a IA gerar código Mermaid (que vira diagrama com setas)
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: { parts: [{ text: `Crie um diagrama Mermaid.js (graph TD) extremamente simples para: "${desc}". Use apenas nós e setas. Retorne SOMENTE o código.` }] }
+        });
+        
+        let code = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+        code = code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+        
+        // Convertemos o código em uma URL de imagem usando o serviço Mermaid.ink
+        // (Isso é rápido e gera um PNG transparente perfeito para o app)
+        const encoded = btoa(unescape(encodeURIComponent(code)));
+        return `https://mermaid.ink/img/${encoded}?bgColor=FFFFFF`;
+    } catch (e) {
+        console.error("Erro diagrama:", e);
+        return "";
+    }
 };
 
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
@@ -369,5 +346,3 @@ export const refineContent = async (text: string, task: string): Promise<string>
     const ai = new GoogleGenAI({ apiKey });
     return await safeGenerate(ai, `Melhore este texto (${task}): "${text}"`, false);
 };
-
-export const generateDiagram = async (desc: string): Promise<string> => { return ""; };
