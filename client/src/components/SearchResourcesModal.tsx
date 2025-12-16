@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, BookOpen, Video, FileText, Plus, X, Globe, Loader2 } from './Icons';
+import { Search, BookOpen, Video, FileText, Plus, X, Globe, Loader2, Link as LinkIcon } from './Icons';
 import { InputType } from '../types';
 
 interface SearchResult {
@@ -48,15 +48,17 @@ export const SearchResourcesModal: React.FC<SearchResourcesModalProps> = ({ onCl
           setResults(formatted);
         }
       } else if (activeTab === 'video') {
-        await new Promise(r => setTimeout(r, 800)); 
+        await new Promise(r => setTimeout(r, 800));
         setResults([
-            { id: 'v1', title: `Aula Completa: ${query}`, author: 'Canal Educação', description: 'Visão aprofundada sobre o tema.', url: 'https://youtube.com', type: InputType.VIDEO },
-            { id: 'v2', title: `Resumo Rápido: ${query}`, author: 'NeuroStudy', description: 'Pontos chaves em 5 minutos.', url: 'https://youtube.com', type: InputType.VIDEO },
+            { id: 'v1', title: `Aula Completa: ${query}`, author: 'Canal Educação', description: 'Uma visão aprofundada sobre o tema com exemplos práticos.', url: 'https://youtube.com/watch?v=exemplo', type: InputType.VIDEO },
+            { id: 'v2', title: `Resumo Rápido: ${query}`, author: 'NeuroStudy Oficial', description: 'Os pontos chaves em 5 minutos.', url: 'https://youtube.com/watch?v=exemplo2', type: InputType.VIDEO },
+            { id: 'v3', title: `Documentário: ${query}`, author: 'Ciência Todo Dia', description: 'História e evolução do conceito.', url: 'https://youtube.com/watch?v=exemplo3', type: InputType.VIDEO },
         ]);
       } else {
         await new Promise(r => setTimeout(r, 800));
         setResults([
-            { id: 'a1', title: `Artigo Científico: ${query}`, author: 'Scielo / Nature', description: 'Análise clínica recente.', url: `https://doi.org/10.1038/example`, type: InputType.DOI },
+            { id: 'a1', title: `Estudo de Caso: ${query}`, author: 'Dr. Silva et al.', description: 'Análise clínica publicada na Scielo.', url: `https://doi.org/10.1038/${Math.random().toString().slice(2,8)}`, type: InputType.DOI },
+            { id: 'a2', title: `Revisão Sistemática sobre ${query}`, author: 'Journal of Science', description: 'Compilado dos últimos 10 anos de pesquisa.', url: `https://doi.org/10.1016/${Math.random().toString().slice(2,8)}`, type: InputType.DOI },
         ]);
       }
     } catch (error) {
@@ -66,44 +68,102 @@ export const SearchResourcesModal: React.FC<SearchResourcesModalProps> = ({ onCl
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') handleSearch();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-gray-100 p-4 flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+        
+        {/* Header */}
+        <div className="bg-white border-b border-gray-100 p-4 flex justify-between items-center shrink-0">
             <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2"><Globe className="w-5 h-5 text-indigo-600"/> Pesquisar Conteúdo</h3>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-500"/></button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-500"/></button>
         </div>
-        <div className="p-6 bg-gray-50 border-b border-gray-200 space-y-4">
+
+        {/* Tabs & Search */}
+        <div className="p-6 bg-gray-50 border-b border-gray-200 shrink-0 space-y-4">
             <div className="flex gap-2 justify-center">
-                <button onClick={() => setActiveTab('book')} className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition-all ${activeTab === 'book' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border'}`}><BookOpen className="w-4 h-4"/> Livros</button>
-                <button onClick={() => setActiveTab('video')} className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition-all ${activeTab === 'video' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 border'}`}><Video className="w-4 h-4"/> Vídeos</button>
-                <button onClick={() => setActiveTab('article')} className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition-all ${activeTab === 'article' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border'}`}><FileText className="w-4 h-4"/> Artigos</button>
+                <button onClick={() => setActiveTab('book')} className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition-all ${activeTab === 'book' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}><BookOpen className="w-4 h-4"/> Livros</button>
+                <button onClick={() => setActiveTab('video')} className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition-all ${activeTab === 'video' ? 'bg-red-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}><Video className="w-4 h-4"/> Vídeos</button>
+                <button onClick={() => setActiveTab('article')} className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition-all ${activeTab === 'article' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}><FileText className="w-4 h-4"/> Artigos</button>
             </div>
-            <div className="relative max-w-2xl mx-auto flex gap-2">
-                <input autoFocus type="text" placeholder="Digite o tema..." className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 outline-none" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
-                <button onClick={handleSearch} disabled={loading || !query.trim()} className="px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50">{loading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Search className="w-5 h-5"/>}</button>
+            
+            <div className="relative max-w-2xl mx-auto">
+                <input 
+                    autoFocus
+                    type="text" 
+                    placeholder={`Pesquisar ${activeTab === 'book' ? 'livros' : activeTab === 'video' ? 'vídeos' : 'artigos'}...`} 
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-lg shadow-sm transition-all"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-6 h-6" />
+                <button 
+                    onClick={handleSearch}
+                    disabled={loading || !query.trim()}
+                    className="absolute right-2 top-2 bottom-2 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin"/> : 'Buscar'}
+                </button>
             </div>
         </div>
+
+        {/* Results */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
             {results.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {results.map((item) => (
-                        <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col h-full">
-                            <h4 className="font-bold text-gray-900 line-clamp-2 mb-1">{item.title}</h4>
-                            <p className="text-xs text-gray-500 font-medium mb-2">{item.author}</p>
+                        <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col h-full group">
+                            <div className="flex items-start gap-4 mb-3">
+                                {item.thumbnail ? (
+                                    <img src={item.thumbnail} alt={item.title} className="w-16 h-24 object-cover rounded shadow-sm shrink-0" />
+                                ) : (
+                                    <div className={`w-16 h-24 flex items-center justify-center rounded shrink-0 ${activeTab === 'book' ? 'bg-orange-100 text-orange-500' : activeTab === 'video' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'}`}>
+                                        {activeTab === 'book' ? <BookOpen className="w-8 h-8"/> : activeTab === 'video' ? <Video className="w-8 h-8"/> : <FileText className="w-8 h-8"/>}
+                                    </div>
+                                )}
+                                <div>
+                                    <h4 className="font-bold text-gray-900 line-clamp-2 leading-tight mb-1">{item.title}</h4>
+                                    <p className="text-xs text-gray-500 font-medium">{item.author}</p>
+                                </div>
+                            </div>
+                            
                             <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-1">{item.description}</p>
-                            <button onClick={() => { onAddSource(item.title, item.url, item.type); onClose(); }} className="w-full mt-auto flex items-center justify-center gap-2 py-2 bg-gray-900 hover:bg-indigo-600 text-white rounded-lg font-bold text-sm transition-colors"><Plus className="w-4 h-4"/> Adicionar</button>
+                            
+                            <button 
+                                onClick={() => { onAddSource(item.title, item.url, item.type); onClose(); }}
+                                className="w-full mt-auto flex items-center justify-center gap-2 py-2.5 bg-gray-900 hover:bg-indigo-600 text-white rounded-lg font-bold text-sm transition-all group-hover:scale-[1.02]"
+                            >
+                                <Plus className="w-4 h-4"/> Adicionar ao Estudo
+                            </button>
                         </div>
                     ))}
                 </div>
             ) : (
-                <div className="h-full flex flex-col items-center justify-center text-gray-400"><Search className="w-16 h-16 mx-auto mb-4 opacity-20"/><p>{hasSearched ? "Nenhum resultado." : "Digite para pesquisar."}</p></div>
+                <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                    {loading ? (
+                        <div className="text-center">
+                            <p className="text-indigo-500 font-bold mb-2">Carregando...</p>
+                            <p>Buscando conhecimento...</p>
+                        </div>
+                    ) : hasSearched ? (
+                        <div className="text-center">
+                            <Search className="w-16 h-16 mx-auto mb-4 opacity-20"/>
+                            <p>Nenhum resultado encontrado para "{query}".</p>
+                        </div>
+                    ) : (
+                        <div className="text-center">
+                            <Globe className="w-16 h-16 mx-auto mb-4 opacity-20"/>
+                            <p>Digite um tema acima para começar a pesquisar.</p>
+                        </div>
+                    )}
+                </div>
             )}
         </div>
       </div>
     </div>
   );
-  export const Loader2 = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-);
 };
