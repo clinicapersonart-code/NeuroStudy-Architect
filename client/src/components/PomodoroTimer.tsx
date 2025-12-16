@@ -7,12 +7,21 @@ export const PomodoroTimer = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   
-  // Posição inicial no canto superior direito
-  const [position, setPosition] = useState({ x: window.innerWidth - 180, y: 100 });
+  // Posição e Dimensão
+  const [position, setPosition] = useState({ x: window.innerWidth - 320, y: 100 });
+  const [size, setSize] = useState({ w: 288, h: 320 }); // Largura inicial 288px (w-72), Altura aprox 320px
+  
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false); // Novo estado
   
   const dragStartPos = useRef({ x: 0, y: 0 });
+  const resizeStartPos = useRef({ x: 0, y: 0, w: 0, h: 0 }); // Refs para resize
   const hasMoved = useRef(false);
+
+  // Constants
+  const MAX_W = 288; // w-72 do tailwind
+  const MIN_W = 200; // Tamanho mínimo legível
+  const MIN_H = 250;
 
   // Ajuste responsivo inicial
   useEffect(() => {
@@ -58,9 +67,9 @@ export const PomodoroTimer = () => {
     handleSetTime(25);
   };
 
-  // --- LÓGICA DE ARRASTAR (GPU ACELERADA) ---
-
+  // --- LÓGICA DE ARRASTAR (DRAG) ---
   const handleDragStart = (clientX: number, clientY: number) => {
+    if (isResizing) return; // Prioridade para o resize
     setIsDragging(true);
     hasMoved.current = false;
     dragStartPos.current = { x: clientX - position.x, y: clientY - position.y };
@@ -78,12 +87,52 @@ export const PomodoroTimer = () => {
 
   const handleDragEnd = () => setIsDragging(false);
 
+  // --- LÓGICA DE REDIMENSIONAR (RESIZE) ---
+  const handleResizeStart = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      setIsResizing(true);
+      resizeStartPos.current = { x: e.clientX, y: e.clientY, w: size.w, h: size.h };
+  };
+
+  const handleResizeMove = (clientX: number, clientY: number) => {
+      if (!isResizing) return;
+      
+      const deltaX = resizeStartPos.current.x - clientX; // Invertido porque estamos arrastando a borda ESQUERDA/INFERIOR talvez? Não, vamos fazer bottom-right convencional primeiro, mas como é absolute position, o comportamento depende.
+      // Assumindo resize pelo canto inferior direito:
+      const deltaW = clientX - resizeStartPos.current.x;
+      const deltaH = clientY - resizeStartPos.current.y;
+
+      // Se queremos diminuir apenas:
+      const newW = Math.min(MAX_W, Math.max(MIN_W, resizeStartPos.current.w + deltaW));
+      // A altura pode ser automática ou controlada, aqui vamos controlar
+      const newH = Math.max(MIN_H, resizeStartPos.current.h + deltaH);
+
+      setSize({ w: newW, h: newH });
+  };
+
+  const handleResizeEnd = () => setIsResizing(false);
+
+  // --- EVENT LISTENERS GLOBAIS ---
   useEffect(() => {
-      const onMouseMove = (e: MouseEvent) => { if (isDragging) { e.preventDefault(); handleDragMove(e.clientX, e.clientY); } };
-      const onMouseUp = () => { if (isDragging) handleDragEnd(); };
-      if (isDragging) { window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp); }
-      return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-  }, [isDragging]);
+      const onMouseMove = (e: MouseEvent) => { 
+          if (isDragging) { e.preventDefault(); handleDragMove(e.clientX, e.clientY); }
+          if (isResizing) { e.preventDefault(); handleResizeMove(e.clientX, e.clientY); }
+      };
+      const onMouseUp = () => { 
+          if (isDragging) handleDragEnd(); 
+          if (isResizing) handleResizeEnd();
+      };
+      
+      if (isDragging || isResizing) { 
+          window.addEventListener('mousemove', onMouseMove); 
+          window.addEventListener('mouseup', onMouseUp); 
+      }
+      return () => { 
+          window.removeEventListener('mousemove', onMouseMove); 
+          window.removeEventListener('mouseup', onMouseUp); 
+      };
+  }, [isDragging, isResizing]);
 
   const onMouseDown = (e: React.MouseEvent) => { if (e.button === 0) handleDragStart(e.clientX, e.clientY); };
   const onTouchStart = (e: React.TouchEvent) => { handleDragStart(e.touches[0].clientX, e.touches[0].clientY); };
@@ -94,6 +143,13 @@ export const PomodoroTimer = () => {
       position: 'fixed', left: 0, top: 0,
       transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
       touchAction: 'none', willChange: 'transform', zIndex: 100,
+  };
+
+  const expandedStyle: React.CSSProperties = {
+      ...containerStyle,
+      width: size.w,
+      height: 'auto', // Altura automática baseada no conteúdo, ou use size.h se quiser forçar
+      minHeight: size.h
   };
 
   const DragTooltip = () => (
@@ -142,11 +198,14 @@ export const PomodoroTimer = () => {
   }
 
   // --- MODO EXPANDIDO (PAINEL DE VIDRO) ---
+  // Calculando escala dos elementos internos baseada na largura atual vs largura máxima
+  const scale = size.w / MAX_W; // 1.0 quando full, < 1.0 quando diminuído
+
   return (
      <div 
-        style={containerStyle}
+        style={expandedStyle}
         className="
-            w-72 p-5 rounded-[2rem]
+            p-5 rounded-[2rem] relative
             
             /* EFEITO LIQUID GLASS PREMIUM */
             bg-gradient-to-br from-white/70 via-white/40 to-white/20
@@ -154,14 +213,14 @@ export const PomodoroTimer = () => {
             border border-white/50
             shadow-[0_8px_32px_0_rgba(31,38,135,0.1)]
             
-            flex flex-col gap-6
+            flex flex-col gap-4
             animate-in zoom-in-95 duration-300 ease-out
         "
      >
         {/* Header Glass */}
         <div 
             onMouseDown={onMouseDown} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={handleDragEnd}
-            className="flex justify-between items-center cursor-move select-none group"
+            className="flex justify-between items-center cursor-move select-none group shrink-0"
         >
             <div className="flex items-center gap-2 pointer-events-none opacity-60">
                 <Tomato className="w-4 h-4" />
@@ -175,9 +234,9 @@ export const PomodoroTimer = () => {
             </button>
         </div>
 
-        {/* Timer Display */}
-        <div className="text-center select-none relative">
-            {/* Círculo decorativo de fundo para dar profundidade */}
+        {/* Timer Display - Scaled */}
+        <div className="text-center select-none relative flex-1 flex flex-col justify-center" style={{ transform: `scale(${Math.max(0.8, scale)})`, transformOrigin: 'center' }}>
+            {/* Círculo decorativo */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-white/20 rounded-full blur-2xl -z-10"></div>
 
             <div className={`text-6xl font-mono font-bold tracking-tighter tabular-nums mb-6 transition-colors drop-shadow-sm ${isRunning ? 'text-indigo-600/90' : 'text-slate-700/80'}`}>
@@ -217,7 +276,7 @@ export const PomodoroTimer = () => {
         </div>
 
         {/* Presets Glass */}
-        <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/20">
+        <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/20 shrink-0">
             {[
                 { m: 25, label: '25m' },
                 { m: 5, label: '5m' },
@@ -236,6 +295,14 @@ export const PomodoroTimer = () => {
                     {preset.label}
                 </button>
             ))}
+        </div>
+
+        {/* RESIZE HANDLE - Canto Inferior Direito */}
+        <div 
+            className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-end justify-end p-1 opacity-0 hover:opacity-50 transition-opacity"
+            onMouseDown={handleResizeStart}
+        >
+            <div className="w-2 h-2 bg-slate-400 rounded-br-sm"></div>
         </div>
      </div>
   );
