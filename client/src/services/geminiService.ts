@@ -6,9 +6,9 @@ const getApiKey = (): string | undefined => {
 };
 
 // --- CONFIGURAÇÃO ---
-const MODEL_NAME = 'gemini-2.0-flash'; 
+const MODEL_NAME = 'gemini-2.0-flash'; // Modelo rápido e com visão
 
-// 1. DEFINIÇÃO DAS PROPRIEDADES COMUNS (Usadas em todos os modos)
+// Schemas (Mantidos iguais ao anterior)
 const COMMON_PROPERTIES = {
   subject: { type: Type.STRING },
   overview: { type: Type.STRING },
@@ -53,7 +53,6 @@ const COMMON_PROPERTIES = {
   }
 };
 
-// 2. DEFINIÇÃO DA PROPRIEDADE DE CAPÍTULOS (Apenas para Livros)
 const CHAPTERS_PROPERTY = {
   chapters: {
     type: Type.ARRAY,
@@ -95,6 +94,73 @@ const CHAPTERS_PROPERTY = {
   }
 };
 
+// --- FUNÇÃO AUXILIAR: UPLOAD DE ARQUIVO (FILE API) ---
+// Faz upload do arquivo para o Google e retorna a URI
+async function uploadFileToGemini(base64Data: string, mimeType: string): Promise<string> {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key missing");
+
+  // 1. Converter Base64 de volta para Blob (necessário para upload)
+  const byteCharacters = atob(base64Data);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: mimeType });
+
+  // 2. Iniciar Upload Resumível (Resumable Upload)
+  // Nota: Estamos usando fetch direto porque a SDK às vezes tem bugs em ambientes browser-only
+  const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
+  
+  const initialResponse = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'X-Goog-Upload-Protocol': 'resumable',
+      'X-Goog-Upload-Command': 'start',
+      'X-Goog-Upload-Header-Content-Length': blob.size.toString(),
+      'X-Goog-Upload-Header-Content-Type': mimeType,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ file: { display_name: 'User Upload' } })
+  });
+
+  const uploadHeader = initialResponse.headers.get('x-goog-upload-url');
+  if (!uploadHeader) throw new Error("Falha ao iniciar upload no Google AI.");
+
+  // 3. Enviar os dados
+  const uploadResponse = await fetch(uploadHeader, {
+    method: 'POST',
+    headers: {
+      'X-Goog-Upload-Protocol': 'resumable',
+      'X-Goog-Upload-Command': 'upload, finalize',
+      'X-Goog-Upload-Offset': '0',
+      'Content-Length': blob.size.toString(),
+    },
+    body: blob
+  });
+
+  const uploadResult = await uploadResponse.json();
+  const fileUri = uploadResult.file.uri;
+  
+  console.log("Arquivo enviado para Google AI:", fileUri);
+  return fileUri;
+}
+
+// --- RETRY LOGIC ---
+async function fetchWithRetry<T>(operation: () => Promise<T>, retries = 3, delay = 5000): Promise<T> {
+  try {
+    return await operation();
+  } catch (error: any) {
+    if ((error.status === 429 || error.message?.includes('429') || error.status === 503) && retries > 0) {
+      console.warn(`[Gemini] Limite (429). Aguardando ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithRetry(operation, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
 export const generateStudyGuide = async (
   content: string,
   mimeType: string,
@@ -103,18 +169,11 @@ export const generateStudyGuide = async (
   isBook: boolean = false
 ): Promise<StudyGuide> => {
   const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error("Chave de API não encontrada (VITE_GEMINI_API_KEY).");
-  }
+  if (!apiKey) throw new Error("Chave de API não encontrada.");
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // --- SELEÇÃO DINÂMICA DE SCHEMA ---
-  // Se for livro, inclui chapters. Se não for, remove completamente para a IA não alucinar.
-  const schemaProperties = isBook 
-    ? { ...COMMON_PROPERTIES, ...CHAPTERS_PROPERTY } 
-    : { ...COMMON_PROPERTIES };
-
+  const schemaProperties = isBook ? { ...COMMON_PROPERTIES, ...CHAPTERS_PROPERTY } : { ...COMMON_PROPERTIES };
   const finalSchema: Schema = {
     type: Type.OBJECT,
     properties: schemaProperties,
@@ -122,111 +181,106 @@ export const generateStudyGuide = async (
   };
 
   let modeInstructions = "";
-
   if (isBook) {
     switch (mode) {
       case StudyMode.SURVIVAL:
         modeInstructions = `
-        MODO LIVRO: SOBREVIVÊNCIA (Pareto Global 80/20)
-        - OBJETIVO: Extrair apenas o núcleo vital (20%).
-        - CONCEITOS DE SUPORTE: NÃO GERE.
-        - CHECKPOINTS: Mínimos.
+        MODO LIVRO: SOBREVIVÊNCIA (Pareto Extremo)
+        - ESTRUTURA: Liste TODOS os capítulos.
+        - DENSIDADE: 1 frase por capítulo. 1 conceito chave.
+        - SUPORTE: NÃO GERE.
         `;
         break;
       case StudyMode.HARD:
         modeInstructions = `
-        MODO LIVRO: HARD (Análise Profunda)
-        - OBJETIVO: Resumo exaustivo.
-        - CONCEITOS DE SUPORTE: Gere lista robusta.
-        - CHECKPOINTS: Detalhados.
+        MODO LIVRO: HARD (Deep Dive)
+        - ESTRUTURA: Liste TODOS os capítulos e seções.
+        - DENSIDADE: Resumo detalhado.
+        - SUPORTE: Gere lista robusta.
         `;
         break;
       case StudyMode.NORMAL:
       default:
         modeInstructions = `
-        MODO LIVRO: NORMAL
-        - OBJETIVO: Equilíbrio.
-        - CONCEITOS DE SUPORTE: Gere para contextualizar.
+        MODO LIVRO: NORMAL (Equilíbrio)
+        - ESTRUTURA: Liste TODOS os capítulos.
+        - DENSIDADE: Pareto (20% essencial).
+        - SUPORTE: Gere para contextualizar.
         `;
         break;
     }
   } else {
-    // --- LÓGICA PADRÃO (AULAS/ARTIGOS) ---
-    // IMPORTANTE: Instrução explícita para NÃO gerar capítulos
-    const noChaptersInstruction = "NÃO GERE 'chapters'. O conteúdo não é um livro.";
-
+    const noChaptersInstruction = "NÃO GERE 'chapters'.";
     if (mode === StudyMode.HARD) {
-      modeInstructions = `
-      MODO: TURBO 🚀 (Análise Completa)
-      - OBJETIVO: Extração máxima. ${noChaptersInstruction}
-      - CONCEITOS DE SUPORTE: OBRIGATÓRIO.
-      - DESENHOS: Use drawLabel='essential' se necessário.
-      `;
+      modeInstructions = `MODO: TURBO 🚀 (Completo). ${noChaptersInstruction} SUPORTE: OBRIGATÓRIO.`;
     } else if (mode === StudyMode.SURVIVAL) {
-      modeInstructions = `
-      MODO: SOBREVIVÊNCIA ⚡ (Pareto Absoluto)
-      - OBJETIVO: Apenas o essencial. ${noChaptersInstruction}
-      - CONCEITOS DE SUPORTE: NÃO PREENCHA.
-      `;
-    } else if (mode === StudyMode.PARETO) {
-      modeInstructions = `
-      MODO: PARETO 80/20.
-      - OBJETIVO: Resumo executivo. ${noChaptersInstruction}
-      - CONCEITOS DE SUPORTE: Não necessário.
-      - CHECKPOINTS: Array vazio [].
-      `;
+      modeInstructions = `MODO: SOBREVIVÊNCIA ⚡. ${noChaptersInstruction} SUPORTE: NÃO PREENCHA.`;
     } else {
-      modeInstructions = `
-      MODO: NORMAL 📚
-      - OBJETIVO: Equilíbrio. ${noChaptersInstruction}
-      - CONCEITOS DE SUPORTE: OBRIGATÓRIO.
-      `;
+      modeInstructions = `MODO: NORMAL 📚. ${noChaptersInstruction} SUPORTE: OBRIGATÓRIO.`;
     }
   }
 
   const MASTER_PROMPT = `
   Você é o NeuroStudy Architect.
-  CONTEXTO: O usuário enviou um conteúdo (${isBook ? 'LIVRO COMPLETO' : 'Material de Estudo/Artigo/Aula'}) para processamento.
-  
-  SUA MISSÃO:
-  1. Ler e interpretar o conteúdo.
-  2. Aplicar a estratégia: ${modeInstructions}
-  3. REGRAS DE DESENHO (drawLabel):
-     - 'essential': Indispensável.
-     - 'suggestion': Opcional.
-     - 'none': Sem desenho.
-  4. CONCEITOS DE SUPORTE (supportConcepts):
-     - Diferencie dos 'coreConcepts'. Core = Essencial. Support = Contexto.
-  5. ESTRUTURA:
-     ${!isBook ? '- PROIBIDO GERAR CAPÍTULOS (chapters). Use apenas checkpoints lineares.' : '- GERE a estrutura de capítulos.'}
-  6. Gerar JSON estrito seguindo o schema.
-
-  IDIOMA: Português do Brasil (pt-BR).
+  CONTEXTO: O usuário enviou conteúdo (${isBook ? 'LIVRO' : 'Material'}) para processamento.
+  MISSÃO:
+  1. Analisar conteúdo.
+  2. Estratégia: ${modeInstructions}
+  3. JSON estrito.
+  IDIOMA: Português do Brasil.
   `;
 
+  // --- LÓGICA HÍBRIDA (INLINE vs FILE API) ---
   const parts: any[] = [];
+  
   if (isBinary) {
-     parts.push({ inlineData: { mimeType: mimeType, data: content } });
+     // SE O ARQUIVO FOR GRANDE (> 15MB) OU FOR VÍDEO/ÁUDIO, USA A FILE API
+     const isVideoOrAudio = mimeType.startsWith('video/') || mimeType.startsWith('audio/');
+     const isLargeFile = content.length > 15 * 1024 * 1024; // ~11MB em base64
+
+     if (isVideoOrAudio || isLargeFile) {
+         console.log("Arquivo grande ou mídia detectada. Usando File API...");
+         try {
+             // 1. Faz upload
+             const fileUri = await uploadFileToGemini(content, mimeType);
+             
+             // 2. Passa a URI para o modelo (não o base64)
+             parts.push({
+                 fileData: {
+                     mimeType: mimeType,
+                     fileUri: fileUri
+                 }
+             });
+             
+             // Se for vídeo, damos uma dica extra para analisar o vídeo todo
+             if (isVideoOrAudio) {
+                 parts.push({ text: "Analise este vídeo/áudio completo. Transcreva mentalmente os pontos chaves e gere o roteiro." });
+             }
+         } catch (e) {
+             console.error("Erro no upload File API:", e);
+             throw new Error("Falha ao processar arquivo grande. Tente um arquivo menor.");
+         }
+     } else {
+         // ARQUIVO PEQUENO (PDF leve, Imagem simples) -> Manda direto (Inline)
+         parts.push({ inlineData: { mimeType: mimeType, data: content } });
+     }
      parts.push({ text: "Gere o roteiro de aprendizado." });
   } else {
      parts.push({ text: content });
   }
 
-  try {
-    console.log(`[Gemini] Iniciando geração com modelo: ${MODEL_NAME}`);
-    
+  return fetchWithRetry(async () => {
+    console.log(`[Gemini] Gerando com ${MODEL_NAME}...`);
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: { role: 'user', parts: parts },
       config: {
         systemInstruction: MASTER_PROMPT,
         responseMimeType: "application/json",
-        responseSchema: finalSchema, // Usa o schema dinâmico aqui
+        responseSchema: finalSchema,
         temperature: 0.3,
       },
     });
-
-    console.log("[Gemini] Resposta recebida!");
 
     let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
     if (!text) text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -238,42 +292,31 @@ export const generateStudyGuide = async (
         guide.checkpoints = guide.checkpoints.map(cp => ({ ...cp, completed: false }));
     }
     return guide;
-  } catch (error: any) {
-    console.error("[Gemini] Erro Crítico:", error);
-    let msg = error.message || "Erro desconhecido na API.";
-    if (msg.includes("404")) msg = `Modelo '${MODEL_NAME}' não encontrado.`;
-    if (msg.includes("429")) msg = "Cota excedida. Tente novamente em instantes.";
-    throw new Error(msg);
-  }
+  });
 };
 
-// ... Funções auxiliares (Slides, Quiz, etc) ...
+// ... Restante das funções (safeGenerate, generateSlides...) mantidas iguais ...
 const safeGenerate = async (ai: GoogleGenAI, prompt: string, schemaMode = true): Promise<string> => {
-    try {
+    return fetchWithRetry(async () => {
         const config: any = {};
         if (schemaMode) config.responseMimeType = "application/json";
-        
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
             contents: { parts: [{ text: prompt }] },
             config
         });
-        
         let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
         return text || "";
-    } catch (e) {
-        console.error("Erro no safeGenerate:", e);
-        return "";
-    }
+    });
 };
 
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("API Key missing");
     const ai = new GoogleGenAI({ apiKey });
-    const text = await safeGenerate(ai, `Crie Slides JSON sobre: "${guide.subject}".`);
-    if (!text) return [];
     try {
+        const text = await safeGenerate(ai, `Crie Slides JSON sobre: "${guide.subject}".`);
+        if (!text) return [];
         return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim() || "[]");
     } catch { return []; }
 };
@@ -282,10 +325,10 @@ export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: 
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("API Key missing");
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = `Crie um Quiz JSON com ${config?.quantity || 6} perguntas sobre ${guide.subject}.`;
-    const text = await safeGenerate(ai, prompt);
-    if (!text) return [];
     try {
+        const prompt = `Crie um Quiz JSON com ${config?.quantity || 6} perguntas sobre ${guide.subject}.`;
+        const text = await safeGenerate(ai, prompt);
+        if (!text) return [];
         return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim() || "[]");
     } catch { return []; }
 };
@@ -294,9 +337,9 @@ export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("API Key missing");
     const ai = new GoogleGenAI({ apiKey });
-    const text = await safeGenerate(ai, `Crie Flashcards JSON sobre: ${guide.subject}.`);
-    if (!text) return [];
     try {
+        const text = await safeGenerate(ai, `Crie Flashcards JSON sobre: ${guide.subject}.`);
+        if (!text) return [];
         return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim() || "[]");
     } catch { return []; }
 };
@@ -307,7 +350,6 @@ export const sendChatMessage = async (history: ChatMessage[], msg: string, study
     const ai = new GoogleGenAI({ apiKey });
     let systemInstruction = "Você é um Mentor de Aprendizado.";
     if (studyGuide) systemInstruction += ` O usuário estuda: ${studyGuide.subject}.`;
-    
     try {
       const chat = ai.chats.create({ 
           model: MODEL_NAME, 
