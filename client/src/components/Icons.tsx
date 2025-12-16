@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export const UploadCloud = ({ className }: { className?: string }) => (
@@ -210,37 +209,22 @@ export const Smile = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
 );
 
-// REVISED LIQUID GLASS TOMATO ICON
 export const Tomato = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" className={className}>
-    {/* Drop Shadow */}
     <ellipse cx="12" cy="21" rx="8" ry="1.5" fill="#000" fillOpacity="0.2" filter="blur(2px)"/>
-    
-    {/* Main Body - Red Glass */}
     <path d="M12 22C17.5228 22 22 17.5228 22 12C22 7.05 18.5 3 12 3C5.5 3 2 7.05 2 12C2 17.5228 6.47715 22 12 22Z" fill="url(#tomatoGradient)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5"/>
-    
-    {/* Inner Glow / Volume */}
     <circle cx="12" cy="12" r="9" fill="url(#innerGlow)" style={{mixBlendMode: 'overlay'}} />
-
-    {/* Top Highlight (Gloss) */}
     <path d="M7 7C8.5 5 11 4.5 13 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.8"/>
     <ellipse cx="9" cy="8" rx="2" ry="1" fill="white" fillOpacity="0.4" transform="rotate(-45 9 8)"/>
-
-    {/* Stem/Leaves */}
     <path d="M12 2V5" stroke="#166534" strokeWidth="2" strokeLinecap="round"/>
     <path d="M12 5L10 3" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
     <path d="M12 5L14 3" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
     <path d="M12 5L9 6" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
     <path d="M12 5L15 6" stroke="#166534" strokeWidth="1.5" strokeLinecap="round"/>
-
-    {/* Timer Ticks (Subtle) */}
     <path d="M12 18V19" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeLinecap="round"/>
     <path d="M18 12H19" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeLinecap="round"/>
     <path d="M6 12H5" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeLinecap="round"/>
-
-    {/* Center Arrow */}
     <path d="M12 12L14 14L10 14L12 12Z" fill="white" fillOpacity="0.9"/>
-
     <defs>
       <linearGradient id="tomatoGradient" x1="6" y1="4" x2="18" y2="20" gradientUnits="userSpaceOnUse">
         <stop offset="0%" stopColor="#ef4444" />
@@ -280,12 +264,15 @@ export const Calendar = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
 );
 
-// MODERN GLASS CLOCK
 export const Clock = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <circle cx="12" cy="12" r="10" fill="currentColor" fillOpacity="0.1" />
     <polyline points="12 6 12 12 16 14" />
-    {/* Gloss Highlight */}
     <path d="M16 4.5a9 9 0 0 0-8 0" strokeOpacity="0.3" strokeWidth="1"/>
   </svg>
+);
+
+// --- ADICIONE ISTO NO FINAL DO ARQUIVO ---
+export const Loader2 = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
 );
