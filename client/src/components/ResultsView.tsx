@@ -1,364 +1,387 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StudyGuide, BookChapter } from '../types';
-import { BrainCircuit, PenTool, Target, Eye, CheckCircle, Download, Printer, FileCode, HelpCircle, Brain, Image as ImageIcon, X, Sparkles, RefreshCw, Layers, Play, Lock, ChevronDown, ChevronRight, BookOpen, Clock, Zap } from './Icons';
-import { refineContent, generateDiagram } from '../services/geminiService';
+import React, { useState, useEffect } from 'react';
+import { StudyGuide } from '../types';
+import { generateTool, generateDiagram } from '../services/geminiService';
+import { 
+  CheckCircle, BookOpen, Brain, Zap, Target, 
+  Smile, Layers, ChevronDown, ChevronRight,
+  Lightbulb, RefreshCw, PenTool, Globe
+} from './Icons';
 
 interface ResultsViewProps {
   guide: StudyGuide;
   onReset: () => void;
   onGenerateQuiz: () => void;
-  onGoToFlashcards?: () => void;
-  onUpdateGuide?: (newGuide: StudyGuide) => void;
+  onGoToFlashcards: () => void;
+  onUpdateGuide: (updatedGuide: StudyGuide) => void;
   isParetoOnly?: boolean;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ guide, onReset, onGenerateQuiz, onGoToFlashcards, onUpdateGuide, isParetoOnly = false }) => {
-  const [activeMagicMenu, setActiveMagicMenu] = useState<{idx: number, type: 'concept' | 'support' | 'checkpoint'} | null>(null);
-  const [magicOutput, setMagicOutput] = useState<{idx: number, text: string} | null>(null);
-  const [loadingMagic, setLoadingMagic] = useState(false);
-  const [loadingImage, setLoadingImage] = useState<number | null>(null); 
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
+export const ResultsView: React.FC<ResultsViewProps> = ({ 
+  guide, onReset, onGenerateQuiz, onGoToFlashcards, onUpdateGuide, isParetoOnly 
+}) => {
+  const [loadingTool, setLoadingTool] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>('main_concepts');
+  
+  // Estado para controlar se o Feynman está Aberto ou Fechado
+  // Inicia aberto se acabou de ser gerado, ou fechado se carregou a página agora
+  const [isFeynmanOpen, setIsFeynmanOpen] = useState(false);
 
-  const toggleChapter = (index: number) => {
-      setExpandedChapters(prev => ({...prev, [index]: !prev[index]}));
-  };
-
-  const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
-
-  const completedCount = guide.checkpoints ? guide.checkpoints.filter(cp => cp.completed).length : 0;
-  const totalCount = guide.checkpoints ? guide.checkpoints.length : 0;
-  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-  const allCompleted = totalCount > 0 && completedCount === totalCount;
-
-  const adjustTextareaHeight = (element: HTMLTextAreaElement | null) => {
-    if (element) {
-      element.style.height = 'auto';
-      element.style.height = `${element.scrollHeight}px`;
-    }
-  };
-
+  // Efeito para abrir automaticamente quando o conteúdo é gerado
   useEffect(() => {
-    if (textareaRefs.current) {
-        textareaRefs.current.forEach(adjustTextareaHeight);
+    if (guide.tools?.explainLikeIm5 && !isFeynmanOpen) {
+       // Se tem conteúdo, mas está fechado, não forçamos abrir (respeita o usuário).
+       // Mas se acabamos de gerar (loading mudou), poderíamos abrir. 
+       // Para simplificar: o botão de "Gerar" já seta o estado abaixo.
     }
-  }, [guide.checkpoints]);
+  }, [guide.tools]);
 
-  const generateMarkdown = (guide: StudyGuide) => {
-    return `---
-tags: [estudo, neurostudy, ${guide.subject.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}]
-assunto: ${guide.subject}
-data: ${new Date().toLocaleDateString('pt-BR')}
----
-# ${guide.subject}
-## 🧠 Resumo
-${guide.overview}
-`;
+  const handleGenerateTool = async (toolType: 'explainLikeIm5' | 'analogy' | 'realWorldApplication' | 'mnemonics' | 'interdisciplinary', topic: string) => {
+    setLoadingTool(toolType);
+    
+    // Se for Feynman, já deixamos aberto visualmente
+    if (toolType === 'explainLikeIm5') setIsFeynmanOpen(true);
+
+    try {
+      const content = await generateTool(toolType, topic, JSON.stringify(guide.mainConcepts));
+      const newTools = { ...guide.tools, [toolType]: content };
+      onUpdateGuide({ ...guide, tools: newTools });
+    } catch (error) {
+      alert('Erro ao gerar ferramenta. Tente novamente.');
+    } finally {
+      setLoadingTool(null);
+    }
   };
 
-  const handleDownloadMD = () => {
-    const md = generateMarkdown(guide);
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${guide.subject.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
-    a.click();
+  const handleGenerateDiagram = async () => {
+      setLoadingTool('diagram');
+      try {
+          const url = await generateDiagram(guide.title, JSON.stringify(guide.mainConcepts));
+          onUpdateGuide({ ...guide, diagramUrl: url });
+      } catch (error) {
+          console.error(error);
+      } finally {
+          setLoadingTool(null);
+      }
   };
 
-  const handlePrint = () => { window.print(); };
-
-  const handleDirectDownloadPDF = () => {
-    const element = document.getElementById('printable-guide');
-    if (!element) return;
-    setIsGeneratingPDF(true);
-    element.classList.add('pdf-export');
-    const opt = {
-      margin: 5,
-      filename: `${guide.subject}_neurostudy.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    // @ts-ignore
-    const worker = window.html2pdf();
-    worker.set(opt).from(element).save().then(() => {
-        element.classList.remove('pdf-export');
-        setIsGeneratingPDF(false);
-    });
-  };
-
-  const handleUpdateCheckpoint = (index: number, field: 'noteExactly' | 'drawExactly', value: string) => {
-    if (!onUpdateGuide) return;
-    const newCheckpoints = [...guide.checkpoints];
-    newCheckpoints[index] = { ...newCheckpoints[index], [field]: value };
+  const toggleCheckpoint = (id: string) => {
+    const newCheckpoints = guide.checkpoints?.map(c => 
+      c.id === id ? { ...c, completed: !c.completed } : c
+    );
     onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
   };
 
-  const handleToggleCheckpoint = (index: number) => {
-    if (!onUpdateGuide) return;
-    const newCheckpoints = [...guide.checkpoints];
-    newCheckpoints[index] = { ...newCheckpoints[index], completed: !newCheckpoints[index].completed };
-    onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
-  };
-
-  const handleMagicAction = async (text: string, task: any, idx: number, type: any) => {
-    setLoadingMagic(true);
-    setMagicOutput(null);
-    try {
-      const result = await refineContent(text, task);
-      setMagicOutput({ idx, text: result });
-    } finally {
-      setLoadingMagic(false);
-    }
-  };
-
-  const handleCloseMagic = () => { setActiveMagicMenu(null); setMagicOutput(null); };
-
-  const handleGenerateImage = async (checkpointIndex: number, description: string) => {
-    if (loadingImage !== null) return;
-    setLoadingImage(checkpointIndex);
-    try {
-        const imageUrl = await generateDiagram(description);
-        if (imageUrl && onUpdateGuide) {
-            const newCheckpoints = [...guide.checkpoints];
-            newCheckpoints[checkpointIndex] = { ...newCheckpoints[checkpointIndex], imageUrl };
-            onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
-        }
-    } catch (e) {
-        alert("Erro ao gerar diagrama.");
-    } finally {
-        setLoadingImage(null);
-    }
-  };
-
-  const renderMarkdownText = (text: string) => {
-    if (!text) return null;
-    return text.split('\n').map((line, i) => (
-      <p key={i} className="mb-1">{line}</p>
-    ));
-  };
-
-  const renderChapter = (chapter: BookChapter, index: number) => {
-      const isExpanded = expandedChapters[index];
-      return (
-          <div key={index} className="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden shadow-sm transition-all">
-              <button onClick={() => toggleChapter(index)} className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left">
-                  <div className="flex items-center gap-3">
-                      {isExpanded ? <ChevronDown className="w-5 h-5 text-gray-400"/> : <ChevronRight className="w-5 h-5 text-gray-400"/>}
-                      <h4 className="font-bold text-gray-800 text-lg">{chapter.title}</h4>
+  const renderChapter = (chapter: any, index: number) => (
+      <div key={index} className="mb-8 border-l-4 border-orange-200 pl-6 py-2">
+          <h3 className="text-xl font-bold text-gray-800 mb-2">{chapter.title}</h3>
+          <p className="text-gray-600 mb-4 italic">{chapter.summary}</p>
+          <div className="space-y-4">
+              {chapter.keyPoints.map((point: string, idx: number) => (
+                  <div key={idx} className="flex items-start gap-3 bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                      <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-bold shrink-0">{idx + 1}</div>
+                      <p className="text-gray-700 text-sm">{point}</p>
                   </div>
-                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{chapter.coreConcepts.length} Conceitos</span>
-              </button>
-              {isExpanded && (
-                  <div className="p-6 border-t border-gray-100 space-y-6">
-                      <div className="prose prose-sm max-w-none text-gray-600">
-                          <h5 className="font-bold text-gray-800 flex items-center gap-2 mb-2"><BookOpen className="w-4 h-4"/> Resumo</h5>
-                          {renderMarkdownText(chapter.summary)}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {chapter.coreConcepts.map((conc, idx) => (
-                              <div key={idx} className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                                  <strong className="block text-yellow-900 mb-1">{conc.concept}</strong>
-                                  <p className="text-sm text-yellow-800">{conc.definition}</p>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              )}
+              ))}
           </div>
-      );
-  };
+          {chapter.actionableStep && (
+               <div className="mt-4 bg-green-50 p-4 rounded-xl border border-green-100 flex items-start gap-3">
+                   <Target className="w-5 h-5 text-green-600 mt-0.5 shrink-0"/>
+                   <div>
+                       <span className="block font-bold text-green-800 text-sm mb-1">Aplicação Prática</span>
+                       <p className="text-green-700 text-sm">{chapter.actionableStep}</p>
+                   </div>
+               </div>
+          )}
+      </div>
+  );
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 no-print">
-        <button onClick={onReset} className="text-sm text-gray-500 hover:text-indigo-600 underline font-medium">← Voltar</button>
-        <div className="flex gap-2 flex-wrap justify-end">
-          <button onClick={handleDownloadMD} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium"><FileCode className="w-4 h-4" /> Obsidian</button>
-          <button onClick={handlePrint} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium"><Printer className="w-4 h-4" /> Imprimir</button>
-          <button onClick={handleDirectDownloadPDF} disabled={isGeneratingPDF} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50">{isGeneratingPDF ? '...' : <Download className="w-4 h-4" />} PDF</button>
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      
+      {/* HEADER DO ESTUDO */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full blur-3xl -z-10 opacity-50"></div>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+                <span className="inline-block px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider mb-2">
+                    {isParetoOnly ? 'Modo Pareto 80/20' : 'Roteiro de Estudo'}
+                </span>
+                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">{guide.title}</h1>
+            </div>
+            <div className="flex gap-2">
+                 {!isParetoOnly && (
+                    <button onClick={onGoToFlashcards} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-bold transition-colors text-sm">
+                        <Layers className="w-4 h-4"/> Flashcards
+                    </button>
+                 )}
+                 <button onClick={onReset} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 font-bold transition-colors text-sm">
+                    <RefreshCw className="w-4 h-4"/> Novo
+                </button>
+            </div>
         </div>
+
+        {guide.summary && (
+            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-slate-700 leading-relaxed text-lg">
+                {guide.summary}
+            </div>
+        )}
       </div>
 
-      <div id="printable-guide">
-        <div className={`bg-white rounded-xl paper-shadow p-8 border-t-4 ${isParetoOnly ? 'border-red-500' : 'border-indigo-500'} print:shadow-none print:border-0`}>
-            <div className="flex justify-between items-start mb-4"><h2 className="text-3xl font-serif font-bold text-gray-900">{guide.subject}</h2></div>
+      {/* FERRAMENTAS COGNITIVAS */}
+      {!isParetoOnly && (
+        <section>
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <Brain className="w-6 h-6 text-indigo-500"/> 
+                Ferramentas Cognitivas
+            </h2>
             
-            <div className={`mb-6 p-6 rounded-lg border ${isParetoOnly ? 'bg-red-50 border-red-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                <div className={`flex items-center gap-2 mb-2 ${isParetoOnly ? 'text-red-700' : 'text-indigo-700'} font-semibold uppercase tracking-wide text-sm`}>
-                    <BrainCircuit className="w-5 h-5" />
-                    <span>{isParetoOnly ? 'RESUMO 80/20' : 'Visão Geral'}</span>
-                </div>
-                <div className={`${isParetoOnly ? 'text-red-900' : 'text-indigo-900'} leading-relaxed text-lg font-serif`}>
-                    {renderMarkdownText(guide.overview)}
-                </div>
-                {guide.globalApplication && (<div className="mt-4 pt-4 border-t border-indigo-100 text-indigo-800 text-sm"><strong>💡 Aplicação Global:</strong> {guide.globalApplication}</div>)}
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* CARD 1: MÉTODO FEYNMAN (Lógica de Abrir/Fechar) */}
+                <div className={`p-6 rounded-2xl border transition-all duration-300 ${guide.tools?.explainLikeIm5 ? 'bg-white border-green-200 shadow-md' : 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-lg'}`}>
+                    <div 
+                        className="flex justify-between items-start mb-4 cursor-pointer"
+                        onClick={() => {
+                            // Se já existe conteúdo, clicar no card alterna entre abrir/fechar
+                            if (guide.tools?.explainLikeIm5) setIsFeynmanOpen(!isFeynmanOpen);
+                        }}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${guide.tools?.explainLikeIm5 ? 'bg-green-100 text-green-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                <Smile className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Método Feynman</h3>
+                                <p className="text-xs text-gray-500">Simplificação e Analogias</p>
+                            </div>
+                        </div>
+                        {/* Ícone de Toggle se já tiver conteúdo */}
+                        {guide.tools?.explainLikeIm5 && (
+                            <button className="text-gray-400">
+                                {isFeynmanOpen ? <ChevronDown className="w-5 h-5"/> : <ChevronRight className="w-5 h-5"/>}
+                            </button>
+                        )}
+                    </div>
 
-            {/* SEÇÃO: CONCEITOS CORE */}
-            {guide.coreConcepts.length > 0 && (
-                <div className="mb-8">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <Target className={`w-6 h-6 ${isParetoOnly ? 'text-red-500' : 'text-indigo-500'}`} />
-                        {isParetoOnly ? 'Conceitos Chave (20%)' : 'Conceitos Fundamentais'}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {guide.coreConcepts.map((item, idx) => {
-                            const isActive = activeMagicMenu?.idx === idx && activeMagicMenu?.type === 'concept';
-                            const hasResult = magicOutput?.idx === idx;
-                            return (
-                                <div key={idx} className={`relative bg-white border border-gray-200 p-5 rounded-xl shadow-sm transition-all duration-300 ${isActive ? 'ring-2 ring-indigo-200' : ''}`}>
-                                    <div className="flex justify-between items-start mb-3">
-                                        <h4 className="font-bold text-gray-900 text-lg leading-tight">{item.concept}</h4>
-                                        <div className="no-print shrink-0 ml-2">
-                                            <button onClick={() => isActive ? handleCloseMagic() : setActiveMagicMenu({idx, type: 'concept'})} className={`p-1.5 rounded-lg transition-all ${isActive ? 'bg-indigo-100 text-indigo-700' : 'text-gray-300 hover:text-indigo-600'}`}>{isActive ? <X className="w-5 h-5"/> : <Brain className="w-5 h-5" />}</button>
+                    {guide.tools?.explainLikeIm5 ? (
+                        // SE JÁ EXISTE CONTEÚDO:
+                        <>
+                            {isFeynmanOpen ? (
+                                <div className="animate-in fade-in slide-in-from-top-2">
+                                    <div className="prose prose-sm prose-indigo mb-4 bg-green-50/50 p-4 rounded-xl text-gray-700 whitespace-pre-line border border-green-100">
+                                        {guide.tools.explainLikeIm5}
+                                    </div>
+                                    
+                                    {/* Botão Exemplo Real dentro do card expandido */}
+                                    {!guide.tools.realWorldApplication ? (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Evita fechar o card ao clicar
+                                                handleGenerateTool('realWorldApplication', guide.title);
+                                            }}
+                                            disabled={loadingTool === 'realWorldApplication'}
+                                            className="w-full py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
+                                        >
+                                            {loadingTool === 'realWorldApplication' ? 'Criando...' : <><Target className="w-4 h-4"/> Gerar Exemplo Real</>}
+                                        </button>
+                                    ) : (
+                                        <div className="mt-4 pt-4 border-t border-green-100 animate-in slide-in-from-top-2">
+                                            <div className="flex items-center gap-2 mb-2 text-green-800 font-bold text-sm">
+                                                <Target className="w-4 h-4"/> Aplicação no Mundo Real:
+                                            </div>
+                                            <p className="text-sm text-gray-700 italic bg-white p-3 rounded-lg border border-gray-100">{guide.tools.realWorldApplication}</p>
+                                        </div>
+                                    )}
+                                    
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setIsFeynmanOpen(false); }}
+                                        className="w-full mt-4 text-xs text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1"
+                                    >
+                                        <ChevronDown className="w-3 h-3 rotate-180"/> Recolher Explicação
+                                    </button>
+                                </div>
+                            ) : (
+                                // SE ESTÁ FECHADO:
+                                <button 
+                                    onClick={() => setIsFeynmanOpen(true)}
+                                    className="w-full py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg font-bold hover:bg-green-100 transition-colors text-sm flex items-center justify-center gap-2"
+                                >
+                                    <BookOpen className="w-4 h-4"/> Ver Explicação Gerada
+                                </button>
+                            )}
+                        </>
+                    ) : (
+                        // SE AINDA NÃO EXISTE (Botão Gerar Inicial)
+                        <div>
+                            <p className="text-sm text-gray-500 mb-4 leading-relaxed">"Se você não consegue explicar de forma simples, você não entendeu bem o suficiente."</p>
+                            <button 
+                                onClick={() => handleGenerateTool('explainLikeIm5', guide.title)}
+                                disabled={loadingTool === 'explainLikeIm5'}
+                                className="w-full py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors text-sm shadow-sm hover:shadow-md"
+                            >
+                                {loadingTool === 'explainLikeIm5' ? 'Gerando...' : 'Aplicar Feynman'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* CARD 2: DIAGRAMA VISUAL */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
+                            <Zap className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">Mapa Mental</h3>
+                            <p className="text-xs text-gray-500">Estrutura Visual</p>
+                        </div>
+                    </div>
+                    
+                    {guide.diagramUrl ? (
+                         <div className="mt-2 animate-in zoom-in">
+                             <img src={guide.diagramUrl} alt="Diagrama" className="w-full rounded-lg border border-gray-100 shadow-sm hover:scale-105 transition-transform cursor-pointer" onClick={() => window.open(guide.diagramUrl, '_blank')} />
+                             <p className="text-center text-xs text-gray-400 mt-2">Clique para ampliar</p>
+                         </div>
+                    ) : (
+                        <div className="h-32 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                             <button 
+                                onClick={handleGenerateDiagram}
+                                disabled={loadingTool === 'diagram'}
+                                className="px-4 py-2 bg-white border border-gray-200 shadow-sm text-gray-600 rounded-lg font-bold hover:text-purple-600 hover:border-purple-200 transition-colors text-sm flex items-center gap-2"
+                            >
+                                {loadingTool === 'diagram' ? 'Desenhando...' : <><PenTool className="w-4 h-4"/> Gerar Mapa Mental</>}
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* CARD 3: MNEMÔNICOS */}
+                 <div className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-orange-300 hover:shadow-lg transition-all">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
+                            <Lightbulb className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">Mnemônicos</h3>
+                            <p className="text-xs text-gray-500">Hacks de Memória</p>
+                        </div>
+                    </div>
+                    {guide.tools?.mnemonics ? (
+                        <div className="p-3 bg-orange-50 rounded-lg text-sm text-gray-700 font-medium">
+                            {guide.tools.mnemonics}
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => handleGenerateTool('mnemonics', guide.title)}
+                            disabled={loadingTool === 'mnemonics'}
+                            className="w-full py-2 bg-white border border-gray-200 text-gray-600 rounded-lg font-bold hover:bg-orange-50 hover:text-orange-600 transition-colors text-sm"
+                        >
+                            Criar Mnemônico
+                        </button>
+                    )}
+                </div>
+
+                {/* CARD 4: CONEXÕES */}
+                 <div className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                            <Globe className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">Conexões</h3>
+                            <p className="text-xs text-gray-500">Visão Interdisciplinar</p>
+                        </div>
+                    </div>
+                    {guide.tools?.interdisciplinary ? (
+                        <div className="p-3 bg-blue-50 rounded-lg text-sm text-gray-700">
+                            {guide.tools.interdisciplinary}
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => handleGenerateTool('interdisciplinary', guide.title)}
+                            disabled={loadingTool === 'interdisciplinary'}
+                            className="w-full py-2 bg-white border border-gray-200 text-gray-600 rounded-lg font-bold hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm"
+                        >
+                            Expandir Visão
+                        </button>
+                    )}
+                </div>
+            </div>
+        </section>
+      )}
+
+      {/* CONTEÚDO PRINCIPAL (Conceitos / Livro) */}
+      <section>
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+             <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center cursor-pointer" onClick={() => setExpandedSection(expandedSection === 'main_concepts' ? null : 'main_concepts')}>
+                 <h2 className="font-bold text-gray-800 flex items-center gap-2"><BookOpen className="w-5 h-5 text-gray-500"/> {guide.bookChapters ? 'Análise por Capítulos' : 'Conceitos Fundamentais'}</h2>
+                 {expandedSection === 'main_concepts' ? <ChevronDown className="w-5 h-5 text-gray-400"/> : <ChevronRight className="w-5 h-5 text-gray-400"/>}
+             </div>
+             
+             {expandedSection === 'main_concepts' && (
+                 <div className="p-8">
+                     {guide.bookChapters ? (
+                         // RENDERIZAÇÃO DE LIVROS
+                         <div>{guide.bookChapters.map((chapter, i) => renderChapter(chapter, i))}</div>
+                     ) : (
+                         // RENDERIZAÇÃO DE ESTUDO NORMAL/PARETO
+                         <div className="space-y-6">
+                            {guide.mainConcepts?.map((concept, idx) => (
+                                <div key={idx} className="group">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shrink-0 group-hover:scale-110 transition-transform">
+                                            {idx + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-lg font-bold text-gray-900 mb-2">{concept.concept}</h3>
+                                            <p className="text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl border border-gray-100">{concept.explanation}</p>
                                         </div>
                                     </div>
-                                    {isActive && !loadingMagic && !hasResult && (
-                                        <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3">
-                                            <div className="text-[10px] uppercase font-bold text-indigo-400 mb-2 px-1">Ferramentas Cognitivas:</div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                <button onClick={() => handleMagicAction(item.definition, 'simplify', idx, 'concept')} className="px-3 py-2 bg-white text-sm rounded-lg text-indigo-900 shadow-sm border border-indigo-100">👶 Explicar Simples</button>
-                                                <button onClick={() => handleMagicAction(item.definition, 'example', idx, 'concept')} className="px-3 py-2 bg-white text-sm rounded-lg text-indigo-900 shadow-sm border border-indigo-100">🌍 Exemplo Real</button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {loadingMagic && isActive && <div className="mb-4 text-center text-xs font-bold text-indigo-400 animate-pulse">Processando...</div>}
-                                    {hasResult && isActive && (
-                                        <div className="mb-4 bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden">
-                                            <div className="p-4 text-sm text-gray-700">{renderMarkdownText(magicOutput.text)}</div>
-                                        </div>
-                                    )}
-                                    <div className="bg-yellow-50 p-4 rounded-lg text-sm text-gray-800 border-l-4 border-yellow-400 font-mono leading-relaxed shadow-sm">"{item.definition}"</div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+                            ))}
+                         </div>
+                     )}
+                 </div>
+             )}
+          </div>
+      </section>
 
-            {/* SEÇÃO: CONCEITOS DE SUPORTE */}
-            {guide.supportConcepts && guide.supportConcepts.length > 0 && (
-                <div className="mb-8">
-                    <h3 className="text-xl font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <Layers className="w-6 h-6 text-slate-500" />
-                        Conceitos de Suporte (Contexto)
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {guide.supportConcepts.map((item, idx) => (
-                            <div key={idx} className="bg-slate-50 border border-slate-200 p-4 rounded-lg">
-                                <h4 className="font-bold text-slate-800 mb-1 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-400"></span>{item.concept}</h4>
-                                <p className="text-sm text-slate-600 leading-relaxed pl-4">{item.definition}</p>
+      {/* CHECKPOINTS (Plano de Ação) */}
+      {guide.checkpoints && guide.checkpoints.length > 0 && (
+          <section>
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="bg-gray-50 p-4 border-b border-gray-200">
+                    <h2 className="font-bold text-gray-800 flex items-center gap-2"><Target className="w-5 h-5 text-red-500"/> Plano de Ação (Checkpoints)</h2>
+                </div>
+                <div className="p-4">
+                    <div className="space-y-3">
+                        {guide.checkpoints.map((checkpoint) => (
+                            <div key={checkpoint.id} 
+                                 className={`flex items-center p-4 rounded-xl border transition-all cursor-pointer ${checkpoint.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 hover:border-indigo-200'}`}
+                                 onClick={() => toggleCheckpoint(checkpoint.id)}
+                            >
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 transition-colors ${checkpoint.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                                    {checkpoint.completed && <CheckCircle className="w-4 h-4 text-white" />}
+                                </div>
+                                <span className={`flex-1 font-medium ${checkpoint.completed ? 'text-green-800 line-through decoration-green-500' : 'text-gray-700'}`}>{checkpoint.task}</span>
                             </div>
                         ))}
                     </div>
                 </div>
-            )}
-
-            {/* SEÇÃO: CAPÍTULOS DE LIVRO */}
-            {guide.chapters && guide.chapters.length > 0 && (
-                <div className="mt-8">
-                    <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><Layers className="w-6 h-6 text-indigo-500" /> Estrutura do Livro</h3>
-                    <div className="space-y-2">{guide.chapters.map((chapter, idx) => renderChapter(chapter, idx))}</div>
-                </div>
-            )}
-        </div>
-
-        {/* SEÇÃO: JORNADA (CHECKPOINTS) */}
-        {!isParetoOnly && guide.checkpoints && guide.checkpoints.length > 0 && (
-            <div className="relative mt-8">
-                <div className="mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm no-print">
-                    <div className="flex justify-between text-sm mb-2"><span className="font-bold text-gray-700 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500"/> Progresso</span><span className="text-indigo-600 font-bold">{completedCount}/{totalCount} passos</span></div>
-                    <div className="w-full bg-gray-100 rounded-full h-3 border border-gray-100 overflow-hidden"><div className="bg-emerald-500 h-3 rounded-full transition-all duration-700" style={{ width: `${progress}%` }}></div></div>
-                </div>
-
-                <h3 className="text-2xl font-bold text-gray-800 mb-8 pl-4">A Jornada (Checkpoints)</h3>
-                
-                <div className="space-y-8 relative">
-                    <div className="absolute left-8 top-6 bottom-0 w-0.5 bg-gray-300 hidden md:block print:hidden"></div>
-                    
-                    {guide.checkpoints.map((cp, idx) => {
-                        const showDrawSection = cp.drawLabel !== 'none';
-                        const drawLabelText = cp.drawLabel === 'essential' ? 'DESENHO ESSENCIAL' : 'SUGESTÃO VISUAL';
-                        const drawColorClass = cp.drawLabel === 'essential' ? 'text-purple-900 border-purple-100 bg-purple-50/50' : 'text-blue-900 border-blue-100 bg-blue-50/50';
-                        
-                        return (
-                        <div key={idx} className="relative md:pl-20 print:pl-0 break-inside-avoid">
-                            <div className={`absolute left-4 top-6 w-8 h-8 border-4 rounded-full hidden md:flex items-center justify-center z-10 print:hidden transition-colors duration-300 ${cp.completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-indigo-500'}`}>
-                                <span className={`text-xs font-bold ${cp.completed ? 'text-white' : 'text-indigo-700'}`}>{cp.completed ? '✓' : idx + 1}</span>
-                            </div>
-
-                            <div className={`rounded-xl paper-shadow overflow-hidden border transition-all duration-300 ${cp.completed ? 'border-emerald-200 bg-emerald-50/10' : 'bg-white border-gray-100'}`}>
-                                <div className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ${cp.completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-gray-200'}`}>
-                                    <div className="flex items-start gap-4">
-                                        <button onClick={() => handleToggleCheckpoint(idx)} className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center shrink-0 no-print ${cp.completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' : 'bg-white border-gray-300 hover:border-emerald-400 hover:bg-emerald-50 text-transparent'}`} title={cp.completed ? 'Marcar como pendente' : 'Marcar como concluído'}><CheckCircle className="w-6 h-6" /></button>
-                                        <div><span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${cp.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>Checkpoint #{idx + 1}</span><h4 className={`font-bold text-lg mt-1 transition-colors ${cp.completed ? 'text-emerald-900' : 'text-gray-900'}`}>{cp.mission}</h4></div>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 font-mono bg-white/50 px-3 py-1 rounded-full border border-gray-100">
-                                        <Clock className="w-4 h-4" />
-                                        <span>{cp.timestamp}</span>
-                                    </div>
-                                </div>
-
-                                <div className="p-6 space-y-6">
-                                    <div className="flex gap-4">
-                                        <div className="mt-1"><Eye className="w-5 h-5 text-blue-500" /></div>
-                                        <div><h5 className="font-bold text-gray-700 text-sm uppercase mb-1">O que procurar:</h5><p className="text-gray-600 leading-relaxed">{cp.lookFor}</p></div>
-                                    </div>
-
-                                    <div className="flex gap-4 bg-yellow-50/50 p-4 rounded-lg border border-yellow-100">
-                                        <div className="mt-1"><PenTool className="w-5 h-5 text-orange-500" /></div>
-                                        <div className="flex-1 w-full">
-                                            <h5 className="font-bold text-gray-700 text-sm uppercase mb-1">Anotar:</h5>
-                                            <textarea className="w-full bg-transparent border-none outline-none resize-none font-serif text-lg text-gray-800 leading-relaxed overflow-hidden" value={cp.noteExactly} onChange={(e) => { handleUpdateCheckpoint(idx, 'noteExactly', e.target.value); adjustTextareaHeight(e.target); }} rows={1} />
-                                        </div>
-                                    </div>
-
-                                    {showDrawSection && (
-                                        <div className={`flex gap-4 p-4 rounded-lg border ${drawColorClass}`}>
-                                            <div className="mt-1"><PenTool className={`w-5 h-5 ${cp.drawLabel === 'essential' ? 'text-purple-500' : 'text-blue-500'}`} /></div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <h5 className={`font-bold text-sm uppercase flex items-center gap-2 ${cp.drawLabel === 'essential' ? 'text-purple-900' : 'text-blue-900'}`}>
-                                                        {drawLabelText}
-                                                    </h5>
-                                                    {/* BOTÃO ATUALIZADO */}
-                                                    {!cp.imageUrl && (
-                                                        <button onClick={() => handleGenerateImage(idx, cp.drawExactly)} disabled={loadingImage === idx} className="text-xs bg-white/50 hover:bg-white text-gray-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 no-print disabled:opacity-50 border border-gray-200 shadow-sm font-bold">
-                                                            {loadingImage === idx ? 'Desenhando...' : <><Zap className="w-3 h-3 text-yellow-500"/> Gerar Esboço (Diagrama)</>}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <p className="text-gray-700 italic border-l-2 border-gray-300 pl-3 mb-3">{cp.drawExactly}</p>
-                                                
-                                                {cp.imageUrl ? (
-                                                    <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 shadow-sm relative group bg-white">
-                                                         <img src={cp.imageUrl} alt="Diagrama" className="w-full h-auto max-h-64 object-contain p-2" />
-                                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                                                             <button onClick={() => handleGenerateImage(idx, cp.drawExactly)} className="bg-white/90 p-2 rounded-full hover:bg-white text-gray-700 shadow-md" title="Regerar"><RefreshCw className="w-4 h-4"/></button>
-                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 text-sm">Espaço para desenho (Use o botão acima para gerar uma ideia)</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                        <div className="flex items-center gap-2 mb-2"><HelpCircle className="w-4 h-4 text-indigo-500" /><span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pergunta de Verificação</span></div>
-                                        <p className="font-bold text-gray-800">{cp.question}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        );
-                    })}
-                </div>
             </div>
-        )}
-      </div>
+          </section>
+      )}
+
+      {!isParetoOnly && !guide.quiz && guide.checkpoints && guide.checkpoints.every(c => c.completed) && (
+          <div className="text-center py-8 animate-in zoom-in">
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">Parabéns! Você concluiu o roteiro.</h3>
+              <p className="text-gray-500 mb-6">Agora é hora de testar seu conhecimento para fixar o conteúdo.</p>
+              <button onClick={onGenerateQuiz} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg hover:shadow-indigo-200">
+                  Gerar Quiz Final
+              </button>
+          </div>
+      )}
     </div>
   );
 };
