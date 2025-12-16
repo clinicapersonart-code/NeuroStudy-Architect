@@ -5,9 +5,9 @@ const getApiKey = (): string | undefined => {
   return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
 };
 
-// --- CONFIGURAÇÃO CORRIGIDA ---
-// Usando a versão específica "001" para evitar erro 404 de modelo não encontrado
-const MODEL_NAME = 'gemini-1.5-flash-001'; 
+// --- CONFIGURAÇÃO: MODELO PRO ---
+// Usando 'gemini-1.5-pro' (Versão estável e potente para chaves pagas/tier 1)
+const MODEL_NAME = 'gemini-1.5-pro'; 
 
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
@@ -218,10 +218,13 @@ export const generateStudyGuide = async (
     return guide;
   } catch (error: any) {
     console.error("[Gemini] Erro Crítico:", error);
-    // Tenta uma mensagem de erro mais amigável
     let msg = error.message || "Erro desconhecido na API.";
-    if (msg.includes("404")) msg = "Modelo de IA não encontrado ou indisponível na sua região.";
-    if (msg.includes("429")) msg = "Muitas requisições. Tente novamente em 1 minuto.";
+    
+    // Tratamento de erros comuns para feedback visual
+    if (msg.includes("404")) msg = `Modelo '${MODEL_NAME}' não encontrado. Verifique se sua chave tem acesso ao Gemini 1.5 Pro.`;
+    if (msg.includes("403") || msg.includes("PERMISSION_DENIED")) msg = "Chave de API inválida ou sem permissão.";
+    if (msg.includes("429")) msg = "Cota excedida. Tente novamente em alguns instantes.";
+    
     throw new Error(msg);
   }
 };
