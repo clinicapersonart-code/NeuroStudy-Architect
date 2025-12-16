@@ -1,95 +1,84 @@
 export enum InputType {
   TEXT = 'TEXT',
   PDF = 'PDF',
-  DOI = 'DOI',
+  YOUTUBE = 'YOUTUBE', // Mantendo compatibilidade
   VIDEO = 'VIDEO',
   URL = 'URL',
-  IMAGE = 'IMAGE'
+  DOI = 'DOI',
+  IMAGE = 'IMAGE',
+  EPUB = 'EPUB',
+  MOBI = 'MOBI'
 }
 
 export enum StudyMode {
-  HARD = 'HARD',
-  NORMAL = 'NORMAL',
   SURVIVAL = 'SURVIVAL',
+  NORMAL = 'NORMAL',
+  HARD = 'HARD',
   PARETO = 'PARETO'
 }
 
-export interface CoreConcept {
-  concept: string;
-  definition: string;
-}
-
-// --- NOVAS ESTRUTURAS PARA LIVROS ---
-export interface BookSection {
-  title: string;
-  coreConcepts: CoreConcept[];
-  supportConcepts?: CoreConcept[];
-  connections?: string;
-  checklist?: string[];
-}
-
-export interface BookChapter {
-  title: string;
-  summary: string;
-  coreConcepts: CoreConcept[];
-  supportConcepts?: CoreConcept[];
-  practicalApplication?: string;
-  sections?: BookSection[];
-}
-// ------------------------------------
-
 export interface Checkpoint {
-  mission: string;
-  timestamp: string;
-  lookFor: string;
-  noteExactly: string;
-  drawExactly: string;
-  drawLabel?: 'essential' | 'suggestion' | 'none';
-  question: string;
-  imageUrl?: string;
+  id: string;
+  task: string;
   completed: boolean;
-  completedAt?: number;
-}
-
-export interface StudyGuide {
-  subject: string;
-  overview: string;
-  globalApplication?: string;
-  coreConcepts: CoreConcept[];
-  supportConcepts?: CoreConcept[]; // <--- NOVO CAMPO
-  checkpoints: Checkpoint[];
-  chapters?: BookChapter[];
-}
-
-export interface Slide {
-  title: string;
-  bullets: string[];
-  speakerNotes: string;
-}
-
-export interface QuizQuestion {
-  id: string;
-  type: 'multiple_choice' | 'open';
-  difficulty: 'easy' | 'medium' | 'hard';
-  question: string;
-  options?: string[];
-  correctAnswer: string;
-  explanation: string;
-}
-
-export interface Flashcard {
-  id: string;
-  front: string;
-  back: string;
 }
 
 export interface StudySource {
   id: string;
   type: InputType;
   name: string;
-  content: string;
+  content: string; // Text content or base64
   mimeType?: string;
   dateAdded: number;
+}
+
+export interface BookChapter {
+    title: string;
+    summary: string;
+    keyPoints: string[];
+    actionableStep?: string;
+    supportConcepts?: { concept: string; explanation: string }[];
+}
+
+export interface StudyGuide {
+  title: string;
+  summary: string;
+  mainConcepts: { concept: string; explanation: string }[];
+  bookChapters?: BookChapter[]; 
+  checkpoints?: Checkpoint[];
+  tools?: {
+    explainLikeIm5?: string;
+    analogy?: string;
+    realWorldApplication?: string;
+    mnemonics?: string;
+    interdisciplinary?: string;
+  };
+  quiz?: any;
+  diagramUrl?: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+  userAnswer?: number;
+}
+
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+  status: 'new' | 'learning' | 'review' | 'mastered';
+  nextReview?: number;
+}
+
+export interface SlideContent {
+  id: string;
+  title: string;
+  bullets: string[];
+  notes?: string;
 }
 
 export interface StudySession {
@@ -98,32 +87,25 @@ export interface StudySession {
   title: string;
   sources: StudySource[];
   mode: StudyMode;
-  isBook?: boolean; // Novo: Flag para saber se é modo Livro
+  isBook?: boolean;
   guide: StudyGuide | null;
-  slides: Slide[] | null;
+  slides: SlideContent[] | null;
   quiz: QuizQuestion[] | null;
   flashcards: Flashcard[] | null;
   createdAt: number;
   updatedAt: number;
   nextReviewDate?: number;
+  reviewStep?: number; // 0 = Nunca revisou, 1 = Revisou 1 vez (24h), etc.
 }
 
 export interface Folder {
   id: string;
   name: string;
-  color?: string;
   parentId?: string;
 }
 
 export interface ProcessingState {
   isLoading: boolean;
   error: string | null;
-  step: 'idle' | 'analyzing' | 'transcribing' | 'generating' | 'slides' | 'quiz' | 'flashcards' | 'diagram' | 'complete';
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  timestamp: number;
+  step: 'idle' | 'uploading' | 'analyzing' | 'generating' | 'slides' | 'quiz' | 'flashcards' | 'transcribing';
 }
