@@ -35,12 +35,10 @@ export function App() {
 
   const [view, setView] = useState<'landing' | 'app'>('landing');
   
-  // INICIALIZAÇÃO DE PASTAS LIMPA (Os Roots são virtuais no Sidebar, não precisam estar aqui)
   const [folders, setFolders] = useState<Folder[]>([]); 
   const [studies, setStudies] = useState<StudySession[]>([]);
   const [activeStudyId, setActiveStudyId] = useState<string | null>(null);
   
-  // ... resto dos estados
   const [activeTab, setActiveTab] = useState<'sources' | 'guide' | 'slides' | 'quiz' | 'flashcards'>('sources');
   const [inputText, setInputText] = useState('');
   const [inputType, setInputType] = useState<InputType>(InputType.TEXT);
@@ -78,7 +76,6 @@ export function App() {
 
   const handleGoToHome = () => { setIsMobileMenuOpen(false); setActiveStudyId(null); setView('landing'); };
   
-  // Create Folder: parentId virá como 'root-neuro', 'root-books' ou ID de outra pasta
   const createFolder = (name: string, parentId?: string) => { 
       const newFolder: Folder = { id: Date.now().toString(), name, parentId }; 
       setFolders([...folders, newFolder]); 
@@ -87,7 +84,6 @@ export function App() {
   
   const renameFolder = (id: string, newName: string) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name: newName } : f)); };
   const deleteFolder = (id: string) => { 
-      // Deleta recursivamente
       const idsToDelete = new Set<string>();
       const collectIds = (fid: string) => {
           idsToDelete.add(fid);
@@ -100,7 +96,6 @@ export function App() {
   };
   
   const moveFolder = (folderId: string, targetParentId: string | undefined) => {
-      // Previne loop (mover pasta para dentro dela mesma)
       if (folderId === targetParentId) return;
       setFolders(prev => prev.map(f => f.id === folderId ? { ...f, parentId: targetParentId } : f));
   };
@@ -150,10 +145,8 @@ export function App() {
   const handleStartRenamingSource = (source: StudySource) => { setEditingSourceId(source.id); setEditSourceName(source.name); };
   const handleSaveSourceRename = () => { if (!activeStudyId || !editingSourceId) return; setStudies(prev => prev.map(s => { if (s.id === activeStudyId) return { ...s, sources: s.sources.map(src => src.id === editingSourceId ? { ...src, name: editSourceName } : src) }; return s; })); setEditingSourceId(null); setEditSourceName(''); };
 
-  // --- FUNÇÃO CRÍTICA ATUALIZADA: Mapeia o destino correto ---
   const handleQuickStart = async (content: string | File, type: InputType, mode: StudyMode = StudyMode.NORMAL, autoGenerate: boolean = false, isBook: boolean = false) => {
-    // Define a pasta raiz baseada no tipo de estudo
-    let targetFolderId = 'root-neuro'; // Padrão
+    let targetFolderId = 'root-neuro';
     if (isBook) targetFolderId = 'root-books';
     else if (mode === StudyMode.PARETO) targetFolderId = 'root-pareto';
 
@@ -220,17 +213,15 @@ export function App() {
     handleGenerateGuideForStudy(activeStudy.id, source, activeStudy.mode, activeStudy.isBook || false);
   };
 
-  // ... Handlers simples mantidos ...
   const handleGenerateSlides = async () => { if (!activeStudy?.guide) return; setProcessingState({ isLoading: true, error: null, step: 'slides' }); try { const slides = await generateSlides(activeStudy.guide); setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, slides } : s)); } catch (err: any) { setProcessingState(prev => ({ ...prev, error: err.message })); } finally { setProcessingState(prev => ({ ...prev, isLoading: false, step: 'idle' })); } };
   const handleGenerateQuiz = async (config?: any) => { if (!activeStudy?.guide) return; setProcessingState({ isLoading: true, error: null, step: 'quiz' }); try { const quiz = await generateQuiz(activeStudy.guide, activeStudy.mode || StudyMode.NORMAL, config); setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, quiz } : s)); } catch (err: any) { setProcessingState(prev => ({ ...prev, error: err.message })); } finally { setProcessingState(prev => ({ ...prev, isLoading: false, step: 'idle' })); } };
   const handleGenerateFlashcards = async () => { if (!activeStudy?.guide) return; setProcessingState({ isLoading: true, error: null, step: 'flashcards' }); try { const flashcards = await generateFlashcards(activeStudy.guide); setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, flashcards } : s)); } catch (err: any) { setProcessingState(prev => ({ ...prev, error: err.message })); } finally { setProcessingState(prev => ({ ...prev, isLoading: false, step: 'idle' })); } };
   const handleClearQuiz = () => { if (!activeStudyId) return; setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, quiz: null } : s)); };
-  const handleStartSession = () => { createStudy('root-neuro', `Novo Estudo`, selectedMode); }; // Default to neuro root
+  const handleStartSession = () => { createStudy('root-neuro', `Novo Estudo`, selectedMode); }; 
   const handleFolderExam = (fid: string) => { /* ... */ };
   
-  // --- NOVAS FUNÇÕES PARA NOTIFICATION CENTER ---
   const handleMarkReviewDone = (studyId: string) => {
-      // Reagendar para 7 dias no futuro
+      // Reagendar para +7 dias (Regra simples de revisão)
       const nextDate = new Date();
       nextDate.setDate(nextDate.getDate() + 7);
       setStudies(prev => prev.map(s => s.id === studyId ? { ...s, nextReviewDate: nextDate.getTime() } : s));
@@ -244,11 +235,17 @@ export function App() {
   };
 
   const handleDeleteReview = (studyId: string) => {
-      // Remover agendamento
       setStudies(prev => prev.map(s => s.id === studyId ? { ...s, nextReviewDate: undefined } : s));
   };
 
-  const renderSourceDescription = (t: InputType) => { /* ... */ return null; };
+  // --- LÓGICA DE AGENDAMENTO VIA MODAL ---
+  const handleScheduleReview = (timestamp: number) => {
+      if (activeStudyId) {
+          setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, nextReviewDate: timestamp } : s));
+      }
+  };
+
+  const renderSourceDescription = (t: InputType) => { return null; };
 
   if (!isAuthorized) {
     return (
@@ -380,7 +377,6 @@ export function App() {
 
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 scroll-smooth">
           
-          {/* ALERTA DE ERRO - NOVO */}
           {processingState.error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6 mx-auto max-w-4xl" role="alert">
               <strong className="font-bold">Ocorreu um erro: </strong>
@@ -560,6 +556,13 @@ export function App() {
         <ChatWidget studyGuide={activeStudy?.guide || null} />
         {showMethodologyModal && <MethodologyModal onClose={() => setShowMethodologyModal(false)} />}
         {previewSource && <SourcePreviewModal source={previewSource} onClose={() => setPreviewSource(null)} />}
+        {showReviewScheduler && activeStudy && (
+            <ReviewSchedulerModal 
+                studyTitle={activeStudy.title}
+                onClose={() => setShowReviewScheduler(false)}
+                onSchedule={handleScheduleReview} 
+            />
+        )}
       </div>
     </div>
   );
