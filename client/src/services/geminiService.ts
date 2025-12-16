@@ -8,92 +8,91 @@ const getApiKey = (): string | undefined => {
 // --- CONFIGURAÇÃO ---
 const MODEL_NAME = 'gemini-2.0-flash'; 
 
-const RESPONSE_SCHEMA: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    subject: { type: Type.STRING },
-    overview: { type: Type.STRING },
-    globalApplication: { type: Type.STRING },
-    coreConcepts: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          concept: { type: Type.STRING },
-          definition: { type: Type.STRING },
-        },
-        required: ["concept", "definition"],
+// 1. DEFINIÇÃO DAS PROPRIEDADES COMUNS (Usadas em todos os modos)
+const COMMON_PROPERTIES = {
+  subject: { type: Type.STRING },
+  overview: { type: Type.STRING },
+  globalApplication: { type: Type.STRING },
+  coreConcepts: {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        concept: { type: Type.STRING },
+        definition: { type: Type.STRING },
       },
+      required: ["concept", "definition"],
     },
-    // --- NOVO: CONCEITOS DE SUPORTE ---
-    supportConcepts: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          concept: { type: Type.STRING },
-          definition: { type: Type.STRING },
-        },
-        required: ["concept", "definition"],
+  },
+  supportConcepts: {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        concept: { type: Type.STRING },
+        definition: { type: Type.STRING },
       },
+      required: ["concept", "definition"],
     },
-    checkpoints: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          mission: { type: Type.STRING },
-          timestamp: { type: Type.STRING },
-          lookFor: { type: Type.STRING },
-          noteExactly: { type: Type.STRING },
-          drawExactly: { type: Type.STRING },
-          // --- REGRA DE DESENHO ATUALIZADA ---
-          drawLabel: { type: Type.STRING, enum: ["essential", "suggestion", "none"] },
-          question: { type: Type.STRING },
-        },
-        required: ["mission", "timestamp", "lookFor", "noteExactly", "question", "drawLabel"],
+  },
+  checkpoints: {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        mission: { type: Type.STRING },
+        timestamp: { type: Type.STRING },
+        lookFor: { type: Type.STRING },
+        noteExactly: { type: Type.STRING },
+        drawExactly: { type: Type.STRING },
+        drawLabel: { type: Type.STRING, enum: ["essential", "suggestion", "none"] },
+        question: { type: Type.STRING },
       },
+      required: ["mission", "timestamp", "lookFor", "noteExactly", "question"],
     },
-    chapters: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          summary: { type: Type.STRING },
-          practicalApplication: { type: Type.STRING },
-          coreConcepts: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: { concept: { type: Type.STRING }, definition: { type: Type.STRING } },
-              required: ["concept", "definition"]
-            }
-          },
-          sections: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                coreConcepts: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: { concept: { type: Type.STRING }, definition: { type: Type.STRING } },
-                    required: ["concept", "definition"]
-                  }
-                }
-              },
-              required: ["title", "coreConcepts"]
-            }
+  }
+};
+
+// 2. DEFINIÇÃO DA PROPRIEDADE DE CAPÍTULOS (Apenas para Livros)
+const CHAPTERS_PROPERTY = {
+  chapters: {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING },
+        summary: { type: Type.STRING },
+        practicalApplication: { type: Type.STRING },
+        coreConcepts: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: { concept: { type: Type.STRING }, definition: { type: Type.STRING } },
+            required: ["concept", "definition"]
           }
         },
-        required: ["title", "summary", "coreConcepts"]
-      }
+        sections: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              coreConcepts: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: { concept: { type: Type.STRING }, definition: { type: Type.STRING } },
+                  required: ["concept", "definition"]
+                }
+              }
+            },
+            required: ["title", "coreConcepts"]
+          }
+        }
+      },
+      required: ["title", "summary", "coreConcepts"]
     }
-  },
-  required: ["subject", "overview", "coreConcepts", "checkpoints"],
+  }
 };
 
 export const generateStudyGuide = async (
@@ -110,6 +109,18 @@ export const generateStudyGuide = async (
 
   const ai = new GoogleGenAI({ apiKey });
 
+  // --- SELEÇÃO DINÂMICA DE SCHEMA ---
+  // Se for livro, inclui chapters. Se não for, remove completamente para a IA não alucinar.
+  const schemaProperties = isBook 
+    ? { ...COMMON_PROPERTIES, ...CHAPTERS_PROPERTY } 
+    : { ...COMMON_PROPERTIES };
+
+  const finalSchema: Schema = {
+    type: Type.OBJECT,
+    properties: schemaProperties,
+    required: ["subject", "overview", "coreConcepts", "checkpoints"],
+  };
+
   let modeInstructions = "";
 
   if (isBook) {
@@ -118,7 +129,7 @@ export const generateStudyGuide = async (
         modeInstructions = `
         MODO LIVRO: SOBREVIVÊNCIA (Pareto Global 80/20)
         - OBJETIVO: Extrair apenas o núcleo vital (20%).
-        - CONCEITOS DE SUPORTE: NÃO GERE. Mantenha o array vazio.
+        - CONCEITOS DE SUPORTE: NÃO GERE.
         - CHECKPOINTS: Mínimos.
         `;
         break;
@@ -126,7 +137,7 @@ export const generateStudyGuide = async (
         modeInstructions = `
         MODO LIVRO: HARD (Análise Profunda)
         - OBJETIVO: Resumo exaustivo.
-        - CONCEITOS DE SUPORTE: Gere uma lista robusta em 'supportConcepts' com definições contextuais, históricas ou teóricas que complementam os Core Concepts.
+        - CONCEITOS DE SUPORTE: Gere lista robusta.
         - CHECKPOINTS: Detalhados.
         `;
         break;
@@ -135,57 +146,60 @@ export const generateStudyGuide = async (
         modeInstructions = `
         MODO LIVRO: NORMAL
         - OBJETIVO: Equilíbrio.
-        - CONCEITOS DE SUPORTE: Gere 'supportConcepts' para contextualizar os temas principais, mas sem excesso de detalhes.
+        - CONCEITOS DE SUPORTE: Gere para contextualizar.
         `;
         break;
     }
   } else {
     // --- LÓGICA PADRÃO (AULAS/ARTIGOS) ---
+    // IMPORTANTE: Instrução explícita para NÃO gerar capítulos
+    const noChaptersInstruction = "NÃO GERE 'chapters'. O conteúdo não é um livro.";
+
     if (mode === StudyMode.HARD) {
       modeInstructions = `
       MODO: TURBO 🚀 (Análise Completa)
-      - OBJETIVO: Extração máxima.
-      - CONCEITOS DE SUPORTE: OBRIGATÓRIO. Preencha 'supportConcepts' com teorias de base, exceções à regra e detalhes técnicos.
-      - DESENHOS: Use drawLabel='essential' para diagramas complexos.
+      - OBJETIVO: Extração máxima. ${noChaptersInstruction}
+      - CONCEITOS DE SUPORTE: OBRIGATÓRIO.
+      - DESENHOS: Use drawLabel='essential' se necessário.
       `;
     } else if (mode === StudyMode.SURVIVAL) {
       modeInstructions = `
       MODO: SOBREVIVÊNCIA ⚡ (Pareto Absoluto)
-      - OBJETIVO: Apenas o essencial.
-      - CONCEITOS DE SUPORTE: NÃO PREENCHA. Deixe o array vazio []. Foco total no Core.
-      - DESENHOS: Apenas se crítico (drawLabel='essential').
+      - OBJETIVO: Apenas o essencial. ${noChaptersInstruction}
+      - CONCEITOS DE SUPORTE: NÃO PREENCHA.
       `;
     } else if (mode === StudyMode.PARETO) {
       modeInstructions = `
       MODO: PARETO 80/20.
-      - OBJETIVO: Resumo executivo.
+      - OBJETIVO: Resumo executivo. ${noChaptersInstruction}
       - CONCEITOS DE SUPORTE: Não necessário.
       - CHECKPOINTS: Array vazio [].
       `;
     } else {
       modeInstructions = `
       MODO: NORMAL 📚
-      - OBJETIVO: Equilíbrio.
-      - CONCEITOS DE SUPORTE: OBRIGATÓRIO. Adicione conceitos que ajudem a entender o "porquê" e o "como" dos conceitos centrais.
+      - OBJETIVO: Equilíbrio. ${noChaptersInstruction}
+      - CONCEITOS DE SUPORTE: OBRIGATÓRIO.
       `;
     }
   }
 
   const MASTER_PROMPT = `
   Você é o NeuroStudy Architect.
-  CONTEXTO: O usuário enviou um conteúdo (${isBook ? 'LIVRO COMPLETO' : 'Material de Estudo'}) para processamento.
+  CONTEXTO: O usuário enviou um conteúdo (${isBook ? 'LIVRO COMPLETO' : 'Material de Estudo/Artigo/Aula'}) para processamento.
   
   SUA MISSÃO:
   1. Ler e interpretar o conteúdo.
   2. Aplicar a estratégia: ${modeInstructions}
   3. REGRAS DE DESENHO (drawLabel):
-     - 'essential': O diagrama é indispensável para entender o ponto.
-     - 'suggestion': O diagrama ajuda, mas não é obrigatório.
-     - 'none': Não há necessidade de desenho.
-     - Se 'drawLabel' for 'essential' ou 'suggestion', preencha 'drawExactly' com instruções claras.
+     - 'essential': Indispensável.
+     - 'suggestion': Opcional.
+     - 'none': Sem desenho.
   4. CONCEITOS DE SUPORTE (supportConcepts):
-     - Diferencie claramente dos 'coreConcepts'. Core = O que cai na prova/essencial. Support = Contexto, causas, exemplos adicionais.
-  5. Gerar JSON estrito seguindo o schema.
+     - Diferencie dos 'coreConcepts'. Core = Essencial. Support = Contexto.
+  5. ESTRUTURA:
+     ${!isBook ? '- PROIBIDO GERAR CAPÍTULOS (chapters). Use apenas checkpoints lineares.' : '- GERE a estrutura de capítulos.'}
+  6. Gerar JSON estrito seguindo o schema.
 
   IDIOMA: Português do Brasil (pt-BR).
   `;
@@ -199,16 +213,20 @@ export const generateStudyGuide = async (
   }
 
   try {
+    console.log(`[Gemini] Iniciando geração com modelo: ${MODEL_NAME}`);
+    
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: { role: 'user', parts: parts },
       config: {
         systemInstruction: MASTER_PROMPT,
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema: finalSchema, // Usa o schema dinâmico aqui
         temperature: 0.3,
       },
     });
+
+    console.log("[Gemini] Resposta recebida!");
 
     let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
     if (!text) text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -221,12 +239,15 @@ export const generateStudyGuide = async (
     }
     return guide;
   } catch (error: any) {
-    console.error("[Gemini] Erro:", error);
-    throw new Error(error.message || "Erro na API Gemini.");
+    console.error("[Gemini] Erro Crítico:", error);
+    let msg = error.message || "Erro desconhecido na API.";
+    if (msg.includes("404")) msg = `Modelo '${MODEL_NAME}' não encontrado.`;
+    if (msg.includes("429")) msg = "Cota excedida. Tente novamente em instantes.";
+    throw new Error(msg);
   }
 };
 
-// ... (Mantenha as outras funções: generateSlides, generateQuiz, etc. iguais ao anterior) ...
+// ... Funções auxiliares (Slides, Quiz, etc) ...
 const safeGenerate = async (ai: GoogleGenAI, prompt: string, schemaMode = true): Promise<string> => {
     try {
         const config: any = {};
