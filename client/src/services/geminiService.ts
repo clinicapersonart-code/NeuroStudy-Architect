@@ -8,7 +8,7 @@ const getApiKey = (): string | undefined => {
 // --- CONFIGURAÇÃO ---
 const MODEL_NAME = 'gemini-2.0-flash'; 
 
-// 1. PROPRIEDADES COMUNS (Usadas em todos os roteiros)
+// Schemas
 const COMMON_PROPERTIES = {
   subject: { type: Type.STRING },
   overview: { type: Type.STRING },
@@ -53,7 +53,6 @@ const COMMON_PROPERTIES = {
   }
 };
 
-// 2. PROPRIEDADE DE CAPÍTULOS (Apenas para Livros)
 const CHAPTERS_PROPERTY = {
   chapters: {
     type: Type.ARRAY,
@@ -96,12 +95,10 @@ const CHAPTERS_PROPERTY = {
 };
 
 // --- FUNÇÃO AUXILIAR: UPLOAD DE ARQUIVO (FILE API) ---
-// Resolve erro 400 em livros grandes e permite vídeos longos
 async function uploadFileToGemini(base64Data: string, mimeType: string): Promise<string> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("API Key missing");
 
-  // Converter Base64 para Blob
   const byteCharacters = atob(base64Data);
   const byteNumbers = new Array(byteCharacters.length);
   for (let i = 0; i < byteCharacters.length; i++) {
@@ -110,7 +107,6 @@ async function uploadFileToGemini(base64Data: string, mimeType: string): Promise
   const byteArray = new Uint8Array(byteNumbers);
   const blob = new Blob([byteArray], { type: mimeType });
 
-  // Upload para Google AI
   const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
   const initialResponse = await fetch(uploadUrl, {
     method: 'POST',
@@ -142,7 +138,7 @@ async function uploadFileToGemini(base64Data: string, mimeType: string): Promise
   return uploadResult.file.uri;
 }
 
-// --- RETRY LOGIC (Para evitar erro 429 de limite) ---
+// --- RETRY LOGIC ---
 async function fetchWithRetry<T>(operation: () => Promise<T>, retries = 3, delay = 5000): Promise<T> {
   try {
     return await operation();
@@ -168,7 +164,6 @@ export const generateStudyGuide = async (
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // SCHEMA DINÂMICO: Se for livro, inclui capítulos. Se não, bloqueia capítulos.
   const schemaProperties = isBook ? { ...COMMON_PROPERTIES, ...CHAPTERS_PROPERTY } : { ...COMMON_PROPERTIES };
   const finalSchema: Schema = {
     type: Type.OBJECT,
@@ -178,7 +173,6 @@ export const generateStudyGuide = async (
 
   let modeInstructions = "";
   if (isBook) {
-    // --- LÓGICA NOVA: Todos os modos de livro geram CAPÍTULOS, mudando apenas a densidade ---
     switch (mode) {
       case StudyMode.SURVIVAL:
         modeInstructions = `
@@ -210,7 +204,6 @@ export const generateStudyGuide = async (
         break;
     }
   } else {
-    // --- LÓGICA PADRÃO (AULAS/ARTIGOS) ---
     const noChaptersInstruction = "NÃO GERE 'chapters'. O conteúdo não é um livro.";
     if (mode === StudyMode.HARD) {
       modeInstructions = `MODO: TURBO 🚀 (Completo). ${noChaptersInstruction} SUPORTE: OBRIGATÓRIO.`;
@@ -234,7 +227,7 @@ export const generateStudyGuide = async (
   const parts: any[] = [];
   if (isBinary) {
      const isVideoOrAudio = mimeType.startsWith('video/') || mimeType.startsWith('audio/');
-     const isLargeFile = content.length > 15 * 1024 * 1024; // Check > ~11MB
+     const isLargeFile = content.length > 15 * 1024 * 1024; 
 
      if (isVideoOrAudio || isLargeFile) {
          try {
@@ -293,7 +286,6 @@ const safeGenerate = async (ai: GoogleGenAI, prompt: string, schemaMode = true):
     });
 };
 
-// --- GERAÇÃO DE DIAGRAMA ATIVADA ---
 export const generateDiagram = async (desc: string): Promise<string> => { 
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("Erro de API.");
@@ -308,7 +300,6 @@ export const generateDiagram = async (desc: string): Promise<string> => {
         let code = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
         code = code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
         
-        // Gera URL da imagem via Mermaid.ink
         const encoded = btoa(unescape(encodeURIComponent(code)));
         return `https://mermaid.ink/img/${encoded}?bgColor=FFFFFF`;
     } catch (e) {
