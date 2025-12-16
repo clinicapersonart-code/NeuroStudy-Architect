@@ -35,10 +35,12 @@ export function App() {
 
   const [view, setView] = useState<'landing' | 'app'>('landing');
   
+  // INICIALIZAÇÃO DE PASTAS LIMPA (Os Roots são virtuais no Sidebar, não precisam estar aqui)
   const [folders, setFolders] = useState<Folder[]>([]); 
   const [studies, setStudies] = useState<StudySession[]>([]);
   const [activeStudyId, setActiveStudyId] = useState<string | null>(null);
   
+  // ... resto dos estados
   const [activeTab, setActiveTab] = useState<'sources' | 'guide' | 'slides' | 'quiz' | 'flashcards'>('sources');
   const [inputText, setInputText] = useState('');
   const [inputType, setInputType] = useState<InputType>(InputType.TEXT);
@@ -76,6 +78,7 @@ export function App() {
 
   const handleGoToHome = () => { setIsMobileMenuOpen(false); setActiveStudyId(null); setView('landing'); };
   
+  // Create Folder: parentId virá como 'root-neuro', 'root-books' ou ID de outra pasta
   const createFolder = (name: string, parentId?: string) => { 
       const newFolder: Folder = { id: Date.now().toString(), name, parentId }; 
       setFolders([...folders, newFolder]); 
@@ -84,6 +87,7 @@ export function App() {
   
   const renameFolder = (id: string, newName: string) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name: newName } : f)); };
   const deleteFolder = (id: string) => { 
+      // Deleta recursivamente
       const idsToDelete = new Set<string>();
       const collectIds = (fid: string) => {
           idsToDelete.add(fid);
@@ -96,6 +100,7 @@ export function App() {
   };
   
   const moveFolder = (folderId: string, targetParentId: string | undefined) => {
+      // Previne loop (mover pasta para dentro dela mesma)
       if (folderId === targetParentId) return;
       setFolders(prev => prev.map(f => f.id === folderId ? { ...f, parentId: targetParentId } : f));
   };
@@ -145,8 +150,10 @@ export function App() {
   const handleStartRenamingSource = (source: StudySource) => { setEditingSourceId(source.id); setEditSourceName(source.name); };
   const handleSaveSourceRename = () => { if (!activeStudyId || !editingSourceId) return; setStudies(prev => prev.map(s => { if (s.id === activeStudyId) return { ...s, sources: s.sources.map(src => src.id === editingSourceId ? { ...src, name: editSourceName } : src) }; return s; })); setEditingSourceId(null); setEditSourceName(''); };
 
+  // --- FUNÇÃO CRÍTICA ATUALIZADA: Mapeia o destino correto ---
   const handleQuickStart = async (content: string | File, type: InputType, mode: StudyMode = StudyMode.NORMAL, autoGenerate: boolean = false, isBook: boolean = false) => {
-    let targetFolderId = 'root-neuro';
+    // Define a pasta raiz baseada no tipo de estudo
+    let targetFolderId = 'root-neuro'; // Padrão
     if (isBook) targetFolderId = 'root-books';
     else if (mode === StudyMode.PARETO) targetFolderId = 'root-pareto';
 
@@ -211,16 +218,18 @@ export function App() {
     handleGenerateGuideForStudy(activeStudy.id, source, activeStudy.mode, activeStudy.isBook || false);
   };
 
+  // ... Handlers simples mantidos ...
   const handleGenerateSlides = async () => { if (!activeStudy?.guide) return; setProcessingState({ isLoading: true, error: null, step: 'slides' }); try { const slides = await generateSlides(activeStudy.guide); setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, slides } : s)); } catch (err: any) { setProcessingState(prev => ({ ...prev, error: err.message })); } finally { setProcessingState(prev => ({ ...prev, isLoading: false, step: 'idle' })); } };
   const handleGenerateQuiz = async (config?: any) => { if (!activeStudy?.guide) return; setProcessingState({ isLoading: true, error: null, step: 'quiz' }); try { const quiz = await generateQuiz(activeStudy.guide, activeStudy.mode || StudyMode.NORMAL, config); setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, quiz } : s)); } catch (err: any) { setProcessingState(prev => ({ ...prev, error: err.message })); } finally { setProcessingState(prev => ({ ...prev, isLoading: false, step: 'idle' })); } };
   const handleGenerateFlashcards = async () => { if (!activeStudy?.guide) return; setProcessingState({ isLoading: true, error: null, step: 'flashcards' }); try { const flashcards = await generateFlashcards(activeStudy.guide); setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, flashcards } : s)); } catch (err: any) { setProcessingState(prev => ({ ...prev, error: err.message })); } finally { setProcessingState(prev => ({ ...prev, isLoading: false, step: 'idle' })); } };
   const handleClearQuiz = () => { if (!activeStudyId) return; setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, quiz: null } : s)); };
-  const handleStartSession = () => { createStudy('root-neuro', `Novo Estudo`, selectedMode); };
+  const handleStartSession = () => { createStudy('root-neuro', `Novo Estudo`, selectedMode); }; // Default to neuro root
   const handleFolderExam = (fid: string) => { /* ... */ };
-  
+  const renderSourceDescription = (t: InputType) => { /* ... */ return null; };
+
   // --- NOVAS FUNÇÕES PARA NOTIFICATION CENTER ---
   const handleMarkReviewDone = (studyId: string) => {
-      // Reagendar para 7 dias no futuro
+      // Reagendar para 7 dias no futuro (lógica simples)
       const nextDate = new Date();
       nextDate.setDate(nextDate.getDate() + 7);
       setStudies(prev => prev.map(s => s.id === studyId ? { ...s, nextReviewDate: nextDate.getTime() } : s));
@@ -234,10 +243,9 @@ export function App() {
   };
 
   const handleDeleteReview = (studyId: string) => {
+      // Remover agendamento
       setStudies(prev => prev.map(s => s.id === studyId ? { ...s, nextReviewDate: undefined } : s));
   };
-
-  const renderSourceDescription = (t: InputType) => { /* ... */ return null; };
 
   if (!isAuthorized) {
     return (
@@ -274,6 +282,7 @@ export function App() {
                 </div>
 
                 <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                    {/* BUTTON 1: NEUROSTUDY (AZUL) */}
                     <button onClick={() => setView('app')} className="group relative flex flex-col items-start p-6 bg-white hover:bg-indigo-50 border-2 border-gray-200 hover:border-indigo-200 rounded-2xl transition-all w-full md:w-80 shadow-sm hover:shadow-xl hover:-translate-y-1">
                         <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 mb-4 group-hover:scale-110 transition-transform"><Layers className="w-8 h-8" /></div>
                         <h3 className="text-lg font-bold text-gray-900">Método NeuroStudy</h3>
@@ -281,6 +290,7 @@ export function App() {
                         <span className="mt-4 w-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center gap-1 px-4 py-3 rounded-lg group-hover:bg-indigo-700 transition-colors">Iniciar <ChevronRight className="w-4 h-4" /></span>
                     </button>
 
+                    {/* BUTTON 2: RESUMO DE LIVROS (LARANJA - MEIO) */}
                     <div className="relative group w-full md:w-80">
                         <input type="file" ref={bookInputRef} className="hidden" onChange={handleBookUpload} accept=".pdf,.epub,.mobi"/>
                         <button onClick={() => bookInputRef.current?.click()} className="relative flex flex-col items-start p-6 bg-white hover:bg-orange-50 border-2 border-orange-100 hover:border-orange-200 rounded-2xl transition-all w-full shadow-sm hover:shadow-xl hover:-translate-y-1 overflow-hidden">
@@ -292,6 +302,7 @@ export function App() {
                         </button>
                     </div>
 
+                    {/* BUTTON 3: PARETO FAST TRACK (VERMELHO) */}
                     <div className="relative group w-full md:w-80">
                         <input type="file" ref={paretoInputRef} className="hidden" onChange={handleParetoUpload} accept=".pdf, video/*, audio/*, image/*, .epub, .mobi"/>
                         <button onClick={() => paretoInputRef.current?.click()} className="relative flex flex-col items-start p-6 bg-white hover:bg-red-50 border-2 border-red-100 hover:border-red-200 rounded-2xl transition-all w-full shadow-sm hover:shadow-xl hover:-translate-y-1 overflow-hidden">
@@ -340,8 +351,8 @@ export function App() {
                 </div>
             ) : ( <h1 className="text-xl font-bold text-gray-400 flex items-center gap-2"><NeuroLogo size={24} className="grayscale opacity-50"/> Criar Novo Estudo</h1> )}
           </div>
-          
           <div className="flex items-center gap-3">
+             {/* SINO FORA DO IF activeStudy PARA APARECER NA HOME TAMBÉM */}
              <div className="relative">
                 <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" onClick={() => setShowNotifications(!showNotifications)}>
                     <Bell className="w-5 h-5"/>
@@ -542,6 +553,4 @@ export function App() {
       </div>
     </div>
   );
-}
-
 }
