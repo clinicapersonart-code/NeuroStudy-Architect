@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { StudyGuide, CoreConcept } from '../types';
-import { generateTool } from '../services/geminiService';
+import { generateTool, generateDiagram } from '../services/geminiService';
 import { 
   CheckCircle, BookOpen, Brain, Target, 
-  Smile, RefreshCw, Layers, Calendar, Clock, ChevronDown, ChevronRight
+  Smile, RefreshCw, Layers, Calendar, Clock, ChevronDown, ChevronRight, PenTool, Zap
 } from './Icons';
 
 interface ResultsViewProps {
@@ -21,6 +21,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   guide, onReset, onGenerateQuiz, onGoToFlashcards, onUpdateGuide, isParetoOnly, onScheduleReview, isReviewScheduled
 }) => {
   const [loadingConceptTool, setLoadingConceptTool] = useState<{idx: number, type: string} | null>(null);
+  const [loadingDiagramForCheckpoint, setLoadingDiagramForCheckpoint] = useState<string | null>(null);
 
   const handleGenerateConceptTool = async (index: number, concept: CoreConcept, toolType: 'feynman' | 'example') => {
     setLoadingConceptTool({ idx: index, type: toolType });
@@ -28,7 +29,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         const promptType = toolType === 'feynman' ? 'explainLikeIm5' : 'realWorldApplication';
         const content = await generateTool(promptType, concept.concept, concept.definition);
         
-        // Usa coreConcepts agora
         const newConcepts = [...(guide.coreConcepts || [])];
         if (!newConcepts[index].tools) newConcepts[index].tools = {};
         
@@ -42,6 +42,21 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     } finally {
         setLoadingConceptTool(null);
     }
+  };
+
+  const handleGenerateCheckpointDiagram = async (checkpointId: string, description: string) => {
+      setLoadingDiagramForCheckpoint(checkpointId);
+      try {
+          const url = await generateDiagram(description);
+          const newCheckpoints = guide.checkpoints?.map(c => 
+              c.id === checkpointId ? { ...c, imageUrl: url } : c
+          );
+          onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
+      } catch (error) {
+          alert("Erro ao gerar diagrama.");
+      } finally {
+          setLoadingDiagramForCheckpoint(null);
+      }
   };
 
   const toggleCheckpoint = (id: string) => {
@@ -91,7 +106,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
          </div>
          
          <div className="p-6 md:p-8 space-y-8">
-             {/* SE FOR LIVRO */}
              {guide.bookChapters && guide.bookChapters.length > 0 ? (
                  guide.bookChapters.map((chapter, i) => (
                     <div key={i} className="mb-8 border-l-4 border-orange-200 pl-6 py-2">
@@ -108,7 +122,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                     </div>
                  ))
              ) : (
-                 /* SE FOR TEXTO/ARTIGO - AQUI ESTÁ A CORREÇÃO (coreConcepts) */
                  guide.coreConcepts && guide.coreConcepts.length > 0 ? (
                     guide.coreConcepts.map((concept, idx) => (
                         <div key={idx} className="group border-b border-gray-100 last:border-0 pb-8 last:pb-0">
@@ -117,87 +130,87 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                                     <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shrink-0">{idx + 1}</div>
                                     <h3 className="text-xl font-bold text-gray-900">{concept.concept}</h3>
                                 </div>
-                                
-                                {/* BOTÕES "CÉREBRO PEQUENO" */}
                                 <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => handleGenerateConceptTool(idx, concept, 'feynman')}
-                                        disabled={loadingConceptTool?.idx === idx}
-                                        className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors tooltip-trigger"
-                                        title="Explicar com Feynman"
-                                    >
-                                        <Smile className="w-5 h-5"/>
-                                    </button>
-                                    <button 
-                                        onClick={() => handleGenerateConceptTool(idx, concept, 'example')}
-                                        disabled={loadingConceptTool?.idx === idx}
-                                        className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                                        title="Exemplo Prático"
-                                    >
-                                        <Target className="w-5 h-5"/>
-                                    </button>
+                                    <button onClick={() => handleGenerateConceptTool(idx, concept, 'feynman')} disabled={loadingConceptTool?.idx === idx} className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors tooltip-trigger" title="Explicar com Feynman"><Smile className="w-5 h-5"/></button>
+                                    <button onClick={() => handleGenerateConceptTool(idx, concept, 'example')} disabled={loadingConceptTool?.idx === idx} className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Exemplo Prático"><Target className="w-5 h-5"/></button>
                                 </div>
                             </div>
-
-                            <p className="text-gray-600 leading-relaxed bg-gray-50 p-5 rounded-xl border border-gray-100 text-base mb-4">
-                                {concept.definition}
-                            </p>
-
-                            {/* ÁREA DE RESPOSTA DAS FERRAMENTAS */}
-                            {concept.tools?.feynman && (
-                                <div className="mt-3 ml-4 p-4 bg-green-50 rounded-xl border border-green-100 animate-in slide-in-from-top-2 relative">
-                                    <h4 className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2 flex items-center gap-2"><Smile className="w-4 h-4"/> Feynman:</h4>
-                                    <p className="text-sm text-green-800 leading-relaxed whitespace-pre-line">{concept.tools.feynman}</p>
-                                </div>
-                            )}
-                            {concept.tools?.example && (
-                                <div className="mt-3 ml-4 p-4 bg-blue-50 rounded-xl border border-blue-100 animate-in slide-in-from-top-2 relative">
-                                    <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-2"><Target className="w-4 h-4"/> Exemplo:</h4>
-                                    <p className="text-sm text-blue-800 leading-relaxed whitespace-pre-line">{concept.tools.example}</p>
-                                </div>
-                            )}
-                            
-                            {loadingConceptTool?.idx === idx && (
-                                <div className="ml-4 text-xs text-gray-400 animate-pulse flex items-center gap-2">
-                                    <Brain className="w-4 h-4 animate-bounce"/> Gerando conteúdo inteligente...
-                                </div>
-                            )}
+                            <p className="text-gray-600 leading-relaxed bg-gray-50 p-5 rounded-xl border border-gray-100 text-base mb-4">{concept.definition}</p>
+                            {concept.tools?.feynman && (<div className="mt-3 ml-4 p-4 bg-green-50 rounded-xl border border-green-100 animate-in slide-in-from-top-2 relative"><h4 className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2 flex items-center gap-2"><Smile className="w-4 h-4"/> Feynman:</h4><p className="text-sm text-green-800 leading-relaxed whitespace-pre-line">{concept.tools.feynman}</p></div>)}
+                            {concept.tools?.example && (<div className="mt-3 ml-4 p-4 bg-blue-50 rounded-xl border border-blue-100 animate-in slide-in-from-top-2 relative"><h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-2"><Target className="w-4 h-4"/> Exemplo:</h4><p className="text-sm text-blue-800 leading-relaxed whitespace-pre-line">{concept.tools.example}</p></div>)}
+                            {loadingConceptTool?.idx === idx && (<div className="ml-4 text-xs text-gray-400 animate-pulse flex items-center gap-2"><Brain className="w-4 h-4 animate-bounce"/> Gerando conteúdo inteligente...</div>)}
                         </div>
                     ))
                  ) : (
-                     <div className="text-center py-10 text-gray-400">
-                         Nenhum conceito encontrado. Tente regenerar o roteiro.
-                     </div>
+                     <div className="text-center py-10 text-gray-400">Nenhum conceito encontrado. Tente regenerar o roteiro.</div>
                  )
              )}
          </div>
       </section>
 
-      {/* CHECKPOINTS (LAYOUT CLÁSSICO RESTAURADO) */}
+      {/* CHECKPOINTS: LAYOUT CLÁSSICO RESTAURADO */}
       {guide.checkpoints && guide.checkpoints.length > 0 && (
           <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                 <div className="bg-gray-50 p-4 border-b border-gray-200">
                     <h2 className="font-bold text-gray-800 flex items-center gap-2"><Target className="w-5 h-5 text-red-500"/> Checkpoints de Aprendizado</h2>
                 </div>
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-6">
                     {guide.checkpoints.map((checkpoint) => (
-                        <div key={checkpoint.id} 
-                             className={`group relative p-4 rounded-xl border-2 transition-all cursor-pointer hover:shadow-md ${checkpoint.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100 hover:border-indigo-100'}`}
-                             onClick={() => toggleCheckpoint(checkpoint.id)}
-                        >
-                            <div className="flex items-start gap-4">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${checkpoint.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 group-hover:border-indigo-300'}`}>
-                                    {checkpoint.completed && <CheckCircle className="w-4 h-4 text-white" />}
+                        <div key={checkpoint.id} className={`flex flex-col md:flex-row gap-6 p-6 rounded-2xl border-2 transition-all ${checkpoint.completed ? 'bg-green-50 border-green-200 opacity-70' : 'bg-white border-gray-100 hover:border-indigo-100 shadow-sm hover:shadow-md'}`}>
+                            
+                            {/* COLUNA ESQUERDA: INSTRUÇÕES E CHECK */}
+                            <div className="flex-1 space-y-4">
+                                <div className="flex items-center gap-4 cursor-pointer" onClick={() => toggleCheckpoint(checkpoint.id)}>
+                                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${checkpoint.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                                        {checkpoint.completed && <CheckCircle className="w-5 h-5 text-white" />}
+                                    </div>
+                                    <div>
+                                        <h4 className={`font-bold text-lg ${checkpoint.completed ? 'text-green-800 line-through' : 'text-gray-900'}`}>{checkpoint.mission}</h4>
+                                        <p className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3"/> Ponto do vídeo/texto: {checkpoint.timestamp}</p>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h4 className={`font-bold text-sm mb-1 ${checkpoint.completed ? 'text-green-800 line-through decoration-green-500' : 'text-gray-900'}`}>
-                                        {checkpoint.mission}
-                                    </h4>
-                                    <p className={`text-xs ${checkpoint.completed ? 'text-green-700' : 'text-gray-500'}`}>
-                                        {checkpoint.question || "Verifique seu entendimento sobre este ponto."}
-                                    </p>
+
+                                <div className="pl-12 space-y-4">
+                                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1 block">O que procurar:</span>
+                                        <p className="text-sm text-indigo-900">{checkpoint.lookFor}</p>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-gray-50 p-3 rounded-lg border-l-4 border-gray-400">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Escreva Exatamente Isso:</span>
+                                            <p className="text-sm text-gray-700 italic font-medium">"{checkpoint.noteExactly}"</p>
+                                        </div>
+                                        <div className="bg-orange-50 p-3 rounded-lg border-l-4 border-orange-400">
+                                            <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1 block">Desenhe Exatamente Isso:</span>
+                                            <p className="text-sm text-orange-800 italic">{checkpoint.drawExactly}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* COLUNA DIREITA: DIAGRAMA E AÇÃO */}
+                            <div className="w-full md:w-1/3 flex flex-col justify-center items-center border-l border-gray-100 pl-0 md:pl-6 pt-4 md:pt-0">
+                                {checkpoint.imageUrl ? (
+                                    <div className="relative w-full group">
+                                        <img src={checkpoint.imageUrl} alt="Diagrama" className="w-full rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:scale-105 transition-transform" onClick={() => window.open(checkpoint.imageUrl, '_blank')}/>
+                                        <p className="text-center text-[10px] text-gray-400 mt-2">Diagrama gerado por IA</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center w-full">
+                                        <p className="text-xs text-gray-400 mb-3">Não entendeu o desenho?</p>
+                                        <button 
+                                            onClick={() => handleGenerateCheckpointDiagram(checkpoint.id, checkpoint.drawExactly)}
+                                            disabled={loadingDiagramForCheckpoint === checkpoint.id}
+                                            className="w-full py-2 px-4 bg-white border border-orange-200 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-50 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            {loadingDiagramForCheckpoint === checkpoint.id ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Zap className="w-3 h-3"/>}
+                                            Gerar Diagrama Visual
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
                         </div>
                     ))}
                 </div>
