@@ -7,6 +7,7 @@ const getApiKey = (): string | undefined => {
 
 const MODEL_NAME = 'gemini-2.0-flash'; 
 
+// ESQUEMA COMPLETO RESTAURADO
 const COMMON_PROPERTIES = {
   subject: { type: Type.STRING },
   overview: { type: Type.STRING },
@@ -15,7 +16,10 @@ const COMMON_PROPERTIES = {
     type: Type.ARRAY,
     items: {
       type: Type.OBJECT,
-      properties: { concept: { type: Type.STRING }, definition: { type: Type.STRING } },
+      properties: {
+        concept: { type: Type.STRING },
+        definition: { type: Type.STRING },
+      },
       required: ["concept", "definition"],
     },
   },
@@ -23,7 +27,10 @@ const COMMON_PROPERTIES = {
     type: Type.ARRAY,
     items: {
       type: Type.OBJECT,
-      properties: { concept: { type: Type.STRING }, definition: { type: Type.STRING } },
+      properties: {
+        concept: { type: Type.STRING },
+        definition: { type: Type.STRING },
+      },
       required: ["concept", "definition"],
     },
   },
@@ -40,7 +47,7 @@ const COMMON_PROPERTIES = {
         drawLabel: { type: Type.STRING, enum: ["essential", "suggestion", "none"] },
         question: { type: Type.STRING },
       },
-      required: ["mission", "timestamp", "lookFor", "noteExactly", "question"],
+      required: ["mission", "timestamp", "lookFor", "noteExactly", "drawExactly", "question"],
     },
   }
 };
@@ -118,7 +125,22 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
     else if (mode === StudyMode.SURVIVAL) modeInstructions = `MODO: SOBREVIVÊNCIA. ${noChaptersInstruction} Sem suporte.`;
     else modeInstructions = `MODO: NORMAL. ${noChaptersInstruction} Suporte OBRIGATÓRIO.`;
   }
-  const MASTER_PROMPT = `Você é o NeuroStudy Architect. CONTEXTO: (${isBook ? 'LIVRO' : 'Material'}). MISSÃO: Analisar. Estratégia: ${modeInstructions} JSON estrito.`;
+  
+  // INSTRUÇÃO REFORÇADA PARA PREENCHER OS CAMPOS 'NOTE' E 'DRAW'
+  const MASTER_PROMPT = `
+  Você é o NeuroStudy Architect. 
+  CONTEXTO: (${isBook ? 'LIVRO' : 'Material'}). 
+  MISSÃO: Analisar e criar um guia prático.
+  
+  CHECKPOINTS OBRIGATÓRIOS:
+  Para cada checkpoint, você DEVE preencher:
+  - "noteExactly": Uma frase curta e poderosa para o aluno copiar no caderno.
+  - "drawExactly": Uma instrução visual clara do que desenhar (ex: 'Desenhe um triângulo com...').
+  
+  Estratégia: ${modeInstructions} 
+  JSON estrito.
+  `;
+  
   const parts: any[] = [];
   if (isBinary) {
      const isVideoOrAudio = mimeType.startsWith('video/') || mimeType.startsWith('audio/');
