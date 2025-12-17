@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>NeuroStudy Architect</title>
     <script>
-      // CRITICAL POLYFILL: Defines 'process' globally to prevent crashes in libraries that expect a Node.js environment
+      // Polifill essencial para evitar erros de bibliotecas
       window.process = { env: { NODE_ENV: 'development' } };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -60,21 +60,7 @@
       .pdf-export .no-print { display: none !important; }
       .pdf-export { background-color: white !important; padding: 20px !important; }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "path": "https://aistudiocdn.com/path@^0.12.7",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
-    "url": "https://aistudiocdn.com/url@^0.11.4"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/client/src/main.tsx"></script>
