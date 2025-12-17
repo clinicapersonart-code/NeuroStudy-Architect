@@ -15,7 +15,7 @@ export const ConnectionsView: React.FC<ConnectionsViewProps> = ({ guide, onUpdat
     setLoading(true);
     try {
       // Usamos 'interdisciplinary' com o contexto global do guia
-      const content = await generateTool('interdisciplinary', guide.title, JSON.stringify(guide.mainConcepts));
+      const content = await generateTool('interdisciplinary', guide.title, JSON.stringify(guide.coreConcepts));
       
       const currentTools = guide.tools || {};
       onUpdateGuide({ 
