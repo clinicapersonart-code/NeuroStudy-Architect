@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Folder, StudySession } from '../types';
 import { FolderIcon, Plus, FileText, ChevronDown, Trash, X, Edit, CornerDownRight, GraduationCap, NeuroLogo, Search, Layers, BookOpen, Target } from './Icons';
-import { ChevronRight } from './Icons';
+// ChevronRight agora é inline (SVG direto no JSX) para evitar problema de bundling
 
 interface SidebarProps {
   folders: Folder[];
@@ -153,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                  ) : (
                     <>
                         <div className="flex items-center gap-2 text-gray-700 overflow-hidden">
-                            {isOpen ? <ChevronDown className="w-3 h-3 text-gray-400 shrink-0"/> : <ChevronRight className="w-3 h-3 text-gray-400 shrink-0"/>}
+                            {isOpen ? <ChevronDown className="w-3 h-3 text-gray-400 shrink-0"/> : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-gray-400 shrink-0"><path d="m9 18 6-6-6-6"/></svg>}
                             <FolderIcon className={`w-4 h-4 shrink-0 ${themeColor}`} />
                             <span className="truncate max-w-[140px] text-sm">{folder.name}</span>
                         </div>
