@@ -1,79 +1,67 @@
-
-
-
 export enum InputType {
   TEXT = 'TEXT',
   PDF = 'PDF',
-  DOI = 'DOI',
-  VIDEO = 'VIDEO',
   URL = 'URL',
-  IMAGE = 'IMAGE'
+  VIDEO = 'VIDEO',
+  IMAGE = 'IMAGE',
+  DOI = 'DOI',
+  EPUB = 'EPUB',
+  MOBI = 'MOBI'
 }
 
 export enum StudyMode {
-  HARD = 'HARD',
-  NORMAL = 'NORMAL',
-  SURVIVAL = 'SURVIVAL',
-  PARETO = 'PARETO'
+  SURVIVAL = 'SURVIVAL', // Resumo extremo (1 frase/capítulo)
+  NORMAL = 'NORMAL',     // Pareto 80/20
+  HARD = 'HARD',         // Completo e Profundo
+  PARETO = 'PARETO'      // Modo focado apenas no essencial
 }
 
 export interface CoreConcept {
   concept: string;
   definition: string;
+  // Adicionamos isto para guardar o Feynman/Exemplo dentro do conceito
+  tools?: {
+    feynman?: string;
+    example?: string;
+  };
 }
 
 export interface Checkpoint {
+  id: string;
   mission: string;
   timestamp: string;
   lookFor: string;
   noteExactly: string;
-  drawExactly: string;
-  drawLabel?: 'essential' | 'suggestion' | 'none'; // New: Classify importance of drawing
   question: string;
-  imageUrl?: string; // New: Store generated diagram URL
-  // FIX: Add completed status for checkpoints to align with client version
-  completed: boolean;
-  completedAt?: number;
+  completed?: boolean;
 }
 
 export interface StudyGuide {
   subject: string;
+  title: string; // Título gerado ou extraído
   overview: string;
-  coreConcepts: CoreConcept[];
-  checkpoints: Checkpoint[];
-}
-
-// New Types for Slides and Quiz
-export interface Slide {
-  title: string;
-  bullets: string[];
-  speakerNotes: string;
-}
-
-export interface QuizQuestion {
-  id: string;
-  type: 'multiple_choice' | 'open';
-  difficulty: 'easy' | 'medium' | 'hard'; // New difficulty level
-  question: string;
-  options?: string[]; // For multiple choice
-  correctAnswer: string; // Index (0-3) or text
-  explanation: string;
-}
-
-export interface Flashcard {
-  id: string;
-  front: string;
-  back: string;
-}
-
-// Study Management Types
-export interface StudySource {
-  id: string;
-  type: InputType;
-  name: string;
-  content: string; // Text or Base64
-  mimeType?: string;
-  dateAdded: number;
+  globalApplication?: string; // Aplicação prática global
+  mainConcepts: CoreConcept[]; // Para artigos/vídeos
+  bookChapters?: {             // Para livros
+      title: string;
+      summary: string;
+      keyPoints: string[];
+      actionableStep?: string;
+      coreConcepts?: CoreConcept[]; // Conceitos específicos do capítulo
+  }[]; 
+  supportConcepts?: CoreConcept[]; // Conceitos de base (glossário)
+  checkpoints?: Checkpoint[];
+  quiz?: QuizQuestion[];
+  flashcards?: Flashcard[];
+  
+  // Ferramentas Globais
+  diagramUrl?: string;
+  tools?: {
+      mnemonics?: string;
+      interdisciplinary?: string;
+      realWorldApplication?: string; // Aplicação global
+      explainLikeIm5?: string;       // Explicação global
+  };
 }
 
 export interface StudySession {
@@ -81,31 +69,60 @@ export interface StudySession {
   folderId: string;
   title: string;
   sources: StudySource[];
-  mode: StudyMode; // Track selected mode
+  mode: StudyMode;
+  isBook?: boolean;
+  
   guide: StudyGuide | null;
-  slides: Slide[] | null;
+  slides: SlideContent[] | null;
   quiz: QuizQuestion[] | null;
   flashcards: Flashcard[] | null;
+  
   createdAt: number;
   updatedAt: number;
+  nextReviewDate?: number;
+  reviewStep?: number; // 0, 1, 2, 3...
 }
 
 export interface Folder {
   id: string;
   name: string;
-  color?: string;
-  parentId?: string; // New: For subfolders
+  parentId?: string;
+}
+
+export interface StudySource {
+  id: string;
+  type: InputType;
+  name: string;
+  content: string; // Texto ou Base64
+  mimeType?: string;
+  dateAdded: number;
 }
 
 export interface ProcessingState {
   isLoading: boolean;
   error: string | null;
-  step: 'idle' | 'analyzing' | 'transcribing' | 'generating' | 'slides' | 'quiz' | 'flashcards' | 'diagram' | 'complete';
+  step: 'idle' | 'transcribing' | 'analyzing' | 'generating' | 'slides' | 'quiz' | 'flashcards';
 }
 
 export interface ChatMessage {
-  id: string;
   role: 'user' | 'model';
   text: string;
-  timestamp: number;
+}
+
+export interface SlideContent {
+  title: string;
+  bullets: string[];
+  speakerNotes: string;
+}
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+}
+
+export interface Flashcard {
+  front: string;
+  back: string;
 }
