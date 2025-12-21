@@ -66,7 +66,7 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({ step, type =
           ? { icon: <Search className={size === 'large' ? "w-16 h-16 text-red-500 animate-bounce" : "w-8 h-8 text-red-500 animate-bounce"} />, title: "Extraindo a Essência (80/20)...", desc: "Identificando o cerne vital e filtrando o ruído trivial." }
           : { icon: <Search className={size === 'large' ? "w-16 h-16 text-indigo-500 animate-bounce" : "w-8 h-8 text-indigo-500 animate-bounce"} />, title: "Analisando Estrutura Cognitiva...", desc: "Identificando conceitos chave e padrões hierárquicos." };
 
-      case 'transcribing': return { icon: <FileText className={size === 'large' ? "w-16 h-16 text-blue-500 animate-pulse" : "w-8 h-8 text-blue-500 animate-pulse"} />, title: "Processando Mídia...", desc: "Convertendo conteúdo em texto processável." };
+      case 'transcribing': return { icon: <FileText className={size === 'large' ? "w-16 h-16 text-blue-500 animate-pulse" : "w-8 h-8 text-blue-500 animate-pulse"} />, title: "Transcrevendo Áudio/Vídeo...", desc: "A IA está ouvindo e convertendo sua mídia em texto (Isso pode levar alguns minutos)..." };
 
       case 'generating':
         if (isBook) return { icon: <Brain className={size === 'large' ? "w-16 h-16 text-orange-500 animate-pulse" : "w-8 h-8 text-orange-500 animate-pulse"} />, title: "Sintetizando Capítulos...", desc: "Criando resumos detalhados e extraindo lições práticas." };

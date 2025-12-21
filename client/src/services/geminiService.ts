@@ -66,7 +66,7 @@ const CHAPTERS_PROPERTY = {
   }
 };
 
-async function uploadFileToGemini(base64Data: string, mimeType: string): Promise<string> {
+export async function uploadFileToGemini(base64Data: string, mimeType: string): Promise<string> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("API Key missing");
   const byteCharacters = atob(base64Data);
@@ -101,6 +101,47 @@ const safeGenerate = async (ai: GoogleGenAI, prompt: string, schemaMode = true):
     let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
     return text || "";
   });
+};
+
+// Função específica para Transcrição de Mídia (Áudio/Vídeo)
+export const transcribeMedia = async (fileUri: string, mimeType: string): Promise<string> => {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key missing");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+  ATUAR COMO: Especialista em Transcrição.
+  TAREFA: Transcrever o arquivo de mídia exato.
+  
+  REGRAS:
+  1. TIMESTAMPS: [MM:SS] a cada minuto.
+  2. Identifique falantes.
+  3. Texto corrido e legível.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: {
+        parts: [
+          { text: prompt },
+          {
+            fileData: {
+              mimeType: mimeType,
+              fileUri: fileUri,
+            },
+          },
+        ]
+      }
+    });
+
+    const text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+    return text || "";
+  } catch (error) {
+    console.error("Erro na transcrição:", error);
+    throw new Error("Falha ao transcrever mídia.");
+  }
 };
 
 export const generateStudyGuide = async (content: string, mimeType: string, mode: StudyMode = StudyMode.NORMAL, isBinary: boolean = false, isBook: boolean = false): Promise<StudyGuide> => {
@@ -147,26 +188,31 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
   🔥 MODO PARETO 80/20 (EXTREMO):
   - Foco: VELOCIDADE e ESSÊNCIA.
   - O QUE FAZER: Identifique os 20% de informação que dão 80% do resultado.
-  - Core Concepts: Máximo 3-5 conceitos CRUCIAIS.
+  - "Core Concepts": Máximo 3-5 conceitos CRUCIAIS.
+  - "Support Concepts": NÃO GERE. Deixe vazio [].
   - Elimine: Histórias, introduções longas, "palha".
   - Estilo: Direto ao ponto, sem rodeios.
   ` : mode === StudyMode.PARETO && isBook ? '' : mode === StudyMode.HARD ? `
   🚀 MODO HARD (PROFUNDO):
   - Foco: DETALHE e DOMÍNIO TÉCNICO.
   - O QUE FAZER: Explique os porquês, com nuances e exceções.
-  - Core Concepts: 10-15 conceitos robustos.
-  - Checkpoints: Alta complexidade para testar compreensão real.
+  - "Core Concepts": 10-15 conceitos robustos e técnicos. Explique o "como" e o "porquê".
+  - "Support Concepts": Liste os conceitos secundários (os 80%) para que o aluno saiba que existem, mas sem aprofundar.
+  - "Checkpoints": Alta complexidade. "noteExactly" deve ser um resumo técnico estruturado.
   ` : `
   ⚖️ MODO NORMAL (NEUROSTUDY PADRÃO):
   - Foco: EQUILÍBRIO e RETENÇÃO.
-  - PRINCÍPIO: Use a Regra de Pareto para filtrar o excesso, mas mantenha a "cola" (contexto) que faz o conteúdo fazer sentido.
-  - Core Concepts: 6-8 conceitos fundamentais ben explicados.
-  - Checkpoints: Equilibrados para fixação ativa.
+  - "Core Concepts": 6-8 conceitos fundamentais. Explicação clara e conectada.
+  - "Support Concepts": Cite os tópicos periféricos (Contexto/Curiosidade) brevemente.
+  - "Checkpoints": Equilibrados.
   `}
   
   CHECKPOINTS OBRIGATÓRIOS:
   Para cada checkpoint, você DEVE preencher:
-  - "noteExactly": Uma frase curta e poderosa para o aluno copiar no caderno.
+  - "noteExactly": O QUE ANOTAR NO CADERNO. Gere um conteúdo substancial, mas **ESTRUTURADO**.
+      - Use Tópicos (bullets) ou frases curtas e potentes.
+      - NÃO gere "paredões de texto" denso.
+      - Deve ser algo que valha a pena copiar e revisar depois.
   - "drawExactly": Uma instrução visual clara do que desenhar (ex: 'Desenhe um triângulo com...').
   
   Estratégia Adicional: ${modeInstructions} 
@@ -180,13 +226,19 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
   - Use parágrafos curtos e objetivos.
   - Tom: Profissional, eficiente e acelerado.
   ` : `
-  - Seu objetivo é PREPARAR O TERRENO (Schema Theory).
-  - Crie uma "Ponte Cognitiva": Comece com uma analogia ou cenário familiar.
-  - Conecte o novo conhecimento com algo que quase todo mundo já sabe.
-  - Termine explicando a relevância prática.
+  - RESUMO ULTRA-CONCISO.
+  - Responda apenas: "Do que trata esta aula?"
+  - Use TEXTO DIRETO e PRÁTICO. Seja o mais breve possível (aprox. 2 a 5 linhas), sem perder informações cruciais.
+  - Sem "Era uma vez" ou analogias longas aqui. Vá direto ao ponto.
   `}
   
   JSON estrito e válido.
+  
+  ⚠️ REGRAS CRÍTICAS DE CHECKPOINTS:
+  1. MICRO-LEARNING: Divida o conteúdo em 'checkpoints' de LUA (Leitura/Visualização Única Ativa) de **5 a 7 minutos** no máximo.
+  2. VIDEO/AUDIO/TRANSCRIPT: Se a entrada for baseada em tempo (vídeo, áudio ou transcrição com timestamps), o campo 'timestamp' DEVE conter o intervalo EXATO (ex: "00:00 - 05:30").
+  3. EVITE TÉDIO: Crie checkpoints curtos e acionáveis. Se o vídeo tem 1 hora, teremos ~10 checkpoints.
+  4. 'mission': Diga exatamente o que fazer nesses 5 min (ex: "Assista dos 10:00 aos 15:00 focando em...").
   `;
 
   const parts: any[] = [];
@@ -221,7 +273,8 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
 export const generateTool = async (
   toolType: 'explainLikeIm5' | 'analogy' | 'realWorldApplication' | 'interdisciplinary',
   topic: string,
-  context: string
+  context: string,
+  targetDomain?: string // New optional parameter
 ): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("API Key missing");
@@ -229,22 +282,35 @@ export const generateTool = async (
   let prompt = '';
   switch (toolType) {
     case 'explainLikeIm5': prompt = `Explique "${topic}" (Contexto: ${context.slice(0, 500)}) usando o Método Feynman. O tom deve ser fascinante e revelador. Use uma metáfora brilhante se possível. Mantenha curto (max 3 frases), mas impactante.`; break;
-    case 'realWorldApplication': prompt = `Como "${topic}" (Contexto: ${context.slice(0, 500)}) é usado no mundo real? Dê um exemplo prático, surpreendente e útil. Nada genérico. Direto e acionável.`; break;
+    case 'realWorldApplication': prompt = `Como "${topic}" (Contexto: ${context.slice(0, 500)}) é usado no mundo real? Dê um exemplo prático (MAX 3 LINHAS), curto e útil.`; break;
     case 'analogy': prompt = `Crie uma analogia para "${topic}".`; break;
-    case 'interdisciplinary': prompt = `Conecte "${topic}" com outra área do conhecimento.`; break;
+    case 'interdisciplinary':
+      const domain = targetDomain ? `com a área de ${targetDomain}` : 'com outra área do conhecimento inusitada';
+      prompt = `Conecte "${topic}" ${domain}. Mostre como os conceitos se cruzam de forma surpreendente.\n\nIMPORTANTE: Escreva um texto fluído e curto. NÃO use formatação markdown como negrito (**) ou itálico (*). Apenas texto puro.`;
+      break;
     default: throw new Error("Ferramenta inválida.");
   }
   return safeGenerate(ai, prompt, false);
 };
 
-export const generateDiagram = async (desc: string): Promise<string> => {
+export const generateDiagram = async (desc: string): Promise<{ code: string, url: string }> => {
   const apiKey = getApiKey(); if (!apiKey) throw new Error("Erro API"); const ai = new GoogleGenAI({ apiKey });
   try {
-    const response = await ai.models.generateContent({ model: MODEL_NAME, contents: { parts: [{ text: `Diagrama Mermaid.js (graph TD) para: "${desc}". Só código.` }] } });
+    const prompt = `
+    Crie um diagrama Mermaid.js (graph TD) visualmente rico para: "${desc}".
+    - Use cores vibrantes e harmônicas (ex: fill:#f9f,stroke:#333,stroke-width:2px).
+    - Aplique estilos (classDef) para nós principais e secundários.
+    - O diagrama deve ser bonito, não o padrão preto e branco.
+    - Retorne APENAS o código mermaid graph TD. Sem markdown.
+    `;
+    const response = await ai.models.generateContent({ model: MODEL_NAME, contents: { parts: [{ text: prompt }] } });
     let code = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
     code = code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
-    return `https://mermaid.ink/img/${btoa(unescape(encodeURIComponent(code)))}?bgColor=FFFFFF`;
-  } catch (e) { return ""; }
+    return {
+      code,
+      url: `https://mermaid.ink/img/${btoa(unescape(encodeURIComponent(code)))}?bgColor=FFFFFF`
+    };
+  } catch (e) { return { code: "", url: "" }; }
 };
 
 export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
@@ -252,9 +318,45 @@ export const generateSlides = async (guide: StudyGuide): Promise<Slide[]> => {
   try { return JSON.parse((await safeGenerate(ai, `Crie Slides JSON sobre: "${guide.subject}".`)).replace(/```json/g, '').replace(/```/g, '').trim() || "[]"); } catch { return []; }
 };
 
-export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: any): Promise<QuizQuestion[]> => {
+export const generateQuiz = async (guide: StudyGuide, mode: StudyMode, config?: { quantity: number, distribution?: { mc: number, open: number } }): Promise<QuizQuestion[]> => {
   const apiKey = getApiKey(); if (!apiKey) throw new Error("API Key missing"); const ai = new GoogleGenAI({ apiKey });
-  try { return JSON.parse((await safeGenerate(ai, `Crie um Quiz DE ALTO NÍVEL (Neuroscience-based) com ${config?.quantity || 6} perguntas sobre: ${guide.subject}. Foco: Testar compreensão profunda e aplicação, não apenas memorização. JSON estrito.`)).replace(/```json/g, '').replace(/```/g, '').trim() || "[]"); } catch { return []; }
+  const qty = config?.quantity || 6;
+  const mcCount = config?.distribution?.mc ?? Math.ceil(qty / 2);
+  const openCount = config?.distribution?.open ?? Math.floor(qty / 2);
+
+  const prompt = `
+  Crie um Quiz DE ALTO NÍVEL (Neuroscience-based) sobre: ${guide.subject}.
+  TOTAL DE QUESTÕES: ${qty}.
+  DISTRIBUIÇÃO OBRIGATÓRIA:
+  - ${mcCount} questões de Múltipla Escolha (type: 'multiple_choice').
+  - ${openCount} questões Dissertativas (type: 'open').
+
+  Para questões 'open', o campo 'correctAnswer' deve conter a "Resposta Esperada/Gabarito" (texto ideal).
+  Foco: Testar compreensão profunda e aplicação. JSON estrito.
+  `;
+  try { return JSON.parse((await safeGenerate(ai, prompt)).replace(/```json/g, '').replace(/```/g, '').trim() || "[]"); } catch { return []; }
+};
+
+export const evaluateOpenAnswer = async (question: string, userAnswer: string, expectedAnswer: string): Promise<{ status: 'correct' | 'partial' | 'wrong', feedback: string }> => {
+  const apiKey = getApiKey(); if (!apiKey) throw new Error("API Key missing"); const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    Avalie a resposta do aluno.
+    Pergunta: "${question}"
+    Resposta Esperada (Gabarito): "${expectedAnswer}"
+    Resposta do Aluno: "${userAnswer}"
+
+    Sua tarefa:
+    1. Classifique como: 'correct' (acertou a essência), 'partial' (acertou parte ou foi vago), 'wrong' (errou ou fugiu do tema).
+    2. Dê um feedback curto (max 2 frases) explicando o porquê.
+
+    Retorne APENAS JSON: { "status": "correct" | "partial" | "wrong", "feedback": "..." }
+    `;
+  try {
+    const res = await safeGenerate(ai, prompt);
+    return JSON.parse(res.replace(/```json/g, '').replace(/```/g, '').trim());
+  } catch (e) {
+    return { status: 'partial', feedback: "Erro ao avaliar. Considere sua resposta comparada ao gabarito." };
+  }
 };
 
 export const generateFlashcards = async (guide: StudyGuide): Promise<Flashcard[]> => {

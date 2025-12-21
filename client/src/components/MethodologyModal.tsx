@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, BrainCircuit, Activity, Rocket, BatteryCharging, CheckCircle, Brain, Target, PenTool, Eye, Sparkles, BookOpen, RefreshCw, GraduationCap, Layers, HelpCircle, Lightbulb, FolderIcon, Calendar, Clock } from './Icons';
+import { X, BrainCircuit, Activity, Rocket, BatteryCharging, CheckCircle, Brain, Target, PenTool, Eye, Sparkles, BookOpen, RefreshCw, GraduationCap, Layers, HelpCircle, Lightbulb, FolderIcon, Calendar, Clock, FileText, Play } from './Icons';
 
 interface MethodologyModalProps {
   onClose: () => void;
@@ -225,87 +225,97 @@ export const MethodologyModal: React.FC<MethodologyModalProps> = ({ onClose }) =
 
           {/* TAB: WORKFLOW (GUIA DA PLATAFORMA) */}
           {activeTab === 'workflow' && (
-            <div className="space-y-12 max-w-4xl mx-auto animate-fade-in">
+            <div className="space-y-10 max-w-4xl mx-auto animate-fade-in">
 
-              {/* PASTAS & PROVÃO */}
-              <div className="flex gap-6 items-start">
-                <div className="bg-indigo-100 text-indigo-700 p-4 rounded-2xl shrink-0 hidden md:block">
-                  <FolderIcon className="w-8 h-8" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">1. Organização & O "Provão"</h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    Não deixe seus estudos soltos. Crie pastas por matéria (ex: "Neurologia", "Direito Constitucional").
-                  </p>
-                  <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 flex items-start gap-3">
-                    <GraduationCap className="w-6 h-6 text-purple-600 mt-1" />
-                    <div>
-                      <strong className="text-purple-900 block mb-1">Recurso Exclusivo: Provão da Pasta (Folder Exam)</strong>
-                      <p className="text-xs text-purple-800 mb-2">
-                        Ao clicar no ícone de chapéu 🎓 na barra lateral (ao lado da pasta), o sistema cria um <strong>Simulado Geral com 20-30 questões</strong> baseadas em TODOS os estudos daquela pasta.
-                      </p>
-                      <p className="text-[10px] bg-white/50 inline-block px-2 py-1 rounded text-purple-700 font-bold">
-                        Perfeito para semanas de prova ou fechamento de ciclo.
-                      </p>
-                    </div>
+              {/* INTRODUÇÃO VISUAL */}
+              <div className="flex justify-center mb-8">
+                <div className="bg-gradient-to-r from-indigo-100 to-purple-100 p-6 rounded-2xl flex items-center gap-6 border border-indigo-50">
+                  <div className="text-center">
+                    <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Passo 1</span>
+                    <div className="bg-white p-3 rounded-xl shadow-sm"><FileText className="w-8 h-8 text-indigo-500" /></div>
+                    <strong className="text-sm text-indigo-900 mt-2 block">Antes</strong>
+                  </div>
+                  <div className="h-0.5 w-12 bg-indigo-200"></div>
+                  <div className="text-center">
+                    <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Passo 2</span>
+                    <div className="bg-white p-3 rounded-xl shadow-sm"><Play className="w-8 h-8 text-pink-500" /></div>
+                    <strong className="text-sm text-indigo-900 mt-2 block">Durante</strong>
+                  </div>
+                  <div className="h-0.5 w-12 bg-indigo-200"></div>
+                  <div className="text-center">
+                    <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Passo 3</span>
+                    <div className="bg-white p-3 rounded-xl shadow-sm"><CheckCircle className="w-8 h-8 text-green-500" /></div>
+                    <strong className="text-sm text-indigo-900 mt-2 block">Depois</strong>
                   </div>
                 </div>
               </div>
 
-              <hr className="border-gray-100" />
-
-              {/* INSIGHT CEREBRAL */}
-              <div className="flex gap-6 items-start">
-                <div className="bg-yellow-100 text-yellow-700 p-4 rounded-2xl shrink-0 hidden md:block">
-                  <Sparkles className="w-8 h-8" />
+              <div className="space-y-8">
+                {/* 1. ANTES DA AULA */}
+                <div className="flex gap-6 items-start">
+                  <div className="bg-indigo-50 text-indigo-600 p-4 rounded-xl shrink-0"><FileText className="w-6 h-6" /></div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">1. Antes da Aula: O Preparo</h3>
+                    <p className="text-gray-600 mb-2">A plataforma gera o <strong>Roteiro NeuroStudy</strong> com checkpoints.</p>
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                      <li>Leia o "Resumo Ultra-Conciso" para alinhar seu cérebro.</li>
+                      <li>Dê uma olhada nos Conceitos Chave para saber o que esperar.</li>
+                    </ul>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">2. Insight Cerebral (Seu Tutor)</h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    Travou num conceito difícil? Não saia da plataforma. Use os botões mágicos ao lado de cada tópico:
-                  </p>
-                  <div className="grid sm:grid-cols-3 gap-3">
-                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                      <div className="text-xs font-bold text-indigo-600 mb-1">👶 Explicar p/ 5 anos</div>
-                      <p className="text-[10px] text-gray-500">Simplificação extrema (Feynman) para destravar o entendimento.</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                      <div className="text-xs font-bold text-green-600 mb-1">🌍 Exemplo Real</div>
-                      <p className="text-[10px] text-gray-500">Conecta a teoria abstrata com algo prático do seu dia.</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                      <div className="text-xs font-bold text-pink-600 mb-1">🧠 Mnemônico</div>
-                      <p className="text-[10px] text-gray-500">Cria rimas ou acrônimos para ajudar a decorar listas.</p>
+
+                {/* 2. DURANTE A AULA (SEU CORE) */}
+                <div className="flex gap-6 items-start">
+                  <div className="bg-pink-50 text-pink-600 p-4 rounded-xl shrink-0"><Play className="w-6 h-6" /></div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">2. Durante a Aula: Ação Constante</h3>
+                    <p className="text-gray-600 mb-4 text-sm">Assista com o roteiro aberto. Use a técnica de 4 passos para cada Checkpoint:</p>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="bg-white border border-gray-100 p-4 rounded-lg shadow-sm">
+                        <strong className="text-indigo-600 flex items-center gap-2 mb-2"><Eye className="w-4 h-4" /> 1. ASSISTA (5-7 min)</strong>
+                        <p className="text-xs text-gray-500">Rode o vídeo. Quando o assunto do checkpoint começar, <strong>foco total</strong>.</p>
+                      </div>
+                      <div className="bg-white border border-gray-100 p-4 rounded-lg shadow-sm">
+                        <strong className="text-red-500 flex items-center gap-2 mb-2"><Activity className="w-4 h-4" /> 2. PAUSE (2-3 min)</strong>
+                        <p className="text-xs text-gray-500">Terminou o ponto? Pause. Responda a pergunta chave e faça a anotação sugerida.</p>
+                      </div>
+                      <div className="bg-white border border-gray-100 p-4 rounded-lg shadow-sm">
+                        <strong className="text-green-600 flex items-center gap-2 mb-2"><BatteryCharging className="w-4 h-4" /> 3. MICRO-PAUSA (30s)</strong>
+                        <p className="text-xs text-gray-500">Respire fundo 3x. Olhe longe. Tome água. Reinicie o ciclo.</p>
+                      </div>
+                      <div className="bg-white border border-gray-100 p-4 rounded-lg shadow-sm">
+                        <strong className="text-purple-600 flex items-center gap-2 mb-2"><Rocket className="w-4 h-4" /> 4. CHECK & CONTINUE</strong>
+                        <p className="text-xs text-gray-500">Marque o checkpoint como feito (Dopamina!). Próximo nível.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <hr className="border-gray-100" />
-
-              {/* REVISÃO & AGENDAMENTO */}
-              <div className="flex gap-6 items-start">
-                <div className="bg-green-100 text-green-700 p-4 rounded-2xl shrink-0 hidden md:block">
-                  <Calendar className="w-8 h-8" />
+                {/* 3. DEPOIS DA AULA */}
+                <div className="flex gap-6 items-start">
+                  <div className="bg-green-50 text-green-600 p-4 rounded-xl shrink-0"><Layers className="w-6 h-6" /></div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">3. Depois da Aula: Consolidação</h3>
+                    <p className="text-gray-600 mb-2">Agora que você entendeu, precisa <strong>gravar</strong>.</p>
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                      <li>Use os <strong>Flashcards</strong> (Recuperação Ativa).</li>
+                      <li>Faça o <strong>Quiz</strong> para testar lacunas.</li>
+                      <li>Agende sua Revisão Automática.</li>
+                    </ul>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">3. Ciclo de Revisão</h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    Estudar uma vez não basta. O NeuroStudy gerencia sua memória.
+
+                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl mt-4">
+                  <h4 className="font-bold text-yellow-800 flex items-center gap-2 mb-1"><Target className="w-5 h-5" /> Por que isso funciona?</h4>
+                  <p className="text-sm text-yellow-800">
+                    ✅ <strong>Micro-objetivos:</strong> Cada checkpoint é uma vitória rápida.<br />
+                    ✅ <strong>Ação Constante:</strong> Impossível ficar passivo ou entediado.<br />
+                    ✅ <strong>Controle:</strong> Você dita o ritmo, não o vídeo.
                   </p>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-3 text-sm text-gray-700">
-                      <div className="bg-gray-100 p-1.5 rounded"><Clock className="w-4 h-4 text-gray-500" /></div>
-                      <span><strong>Agendar Revisão:</strong> Ao fim do estudo, clique no botão para agendar. Pode integrar com Google Calendar.</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-sm text-gray-700">
-                      <div className="bg-gray-100 p-1.5 rounded"><Layers className="w-4 h-4 text-gray-500" /></div>
-                      <span><strong>Flashcards & Quiz:</strong> Use as ferramentas geradas pela IA para testar sua memória ativamente antes de reler.</span>
-                    </li>
-                  </ul>
                 </div>
-              </div>
 
+              </div>
             </div>
           )}
 

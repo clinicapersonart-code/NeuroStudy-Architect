@@ -22,6 +22,7 @@ export interface CoreConcept {
   tools?: {
     feynman?: string;
     example?: string;
+    interdisciplinary?: string;
   };
 }
 
@@ -35,7 +36,8 @@ export interface Checkpoint {
   drawExactly: string;  // "Desenhe exatamente isso"
   drawLabel?: 'essential' | 'suggestion' | 'none';
   question: string;
-  imageUrl?: string;    // Para guardar o diagrama gerado
+  imageUrl?: string;    // Para retrocompatibilidade ou cache visual
+  diagramCode?: string; // O código Mermaid editável
   completed?: boolean;
 }
 
@@ -64,6 +66,9 @@ export interface StudyGuide {
     explainLikeIm5?: string;
   };
 }
+
+// Prompt Helper para limitar texto de Aplicação Real
+const REAL_WORLD_INSTRUCTION = "Exemplo prático, curto e direto (máximo 3 linhas) de como esse conceito é usado na vida real ou profissional.";
 
 export interface StudySession {
   id: string;
@@ -117,9 +122,12 @@ export interface SlideContent {
 }
 
 export interface QuizQuestion {
+  id: string;
+  type: 'multiple_choice' | 'open';
+  difficulty: 'easy' | 'medium' | 'hard';
   question: string;
-  options: string[];
-  correctAnswer: number;
+  options?: string[];
+  correctAnswer: number | string; // Index for MC, Expected Answer text for Open
   explanation: string;
 }
 

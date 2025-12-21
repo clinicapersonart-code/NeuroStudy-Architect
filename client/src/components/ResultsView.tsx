@@ -7,6 +7,7 @@ import {
     Smile, RefreshCw, Layers, Calendar, Clock,
     ChevronDown, ChevronRight, PenTool, Zap, Lightbulb
 } from './Icons';
+import { MermaidEditor } from './MermaidEditor';
 
 interface ResultsViewProps {
     guide: StudyGuide;
@@ -25,9 +26,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     // Estado para controlar qual conceito está carregando/expandido
     const [insightLoading, setInsightLoading] = useState<number | null>(null);
     const [expandedConcepts, setExpandedConcepts] = useState<Set<number>>(new Set());
-    const [activeInsightTab, setActiveInsightTab] = useState<Record<number, 'feynman' | 'example'>>({});
+    const [activeInsightTab, setActiveInsightTab] = useState<Record<number, 'feynman' | 'example' | 'interdisciplinary'>>({});
+    const [interdisciplinaryInput, setInterdisciplinaryInput] = useState<Record<number, string>>({}); // Armazena o tema digitado por card
 
     const [loadingDiagramForCheckpoint, setLoadingDiagramForCheckpoint] = useState<string | null>(null);
+    const [isCelebrating, setIsCelebrating] = useState(false); // Estado para animação de celebração
 
     // Função "Insight Cerebral": Gera Feynman e Exemplo juntos ao clicar no cérebro
     // Função "Insight Cerebral": Apenas expande a visualização. A geração agora é sob demanda (lazy).
@@ -49,24 +52,37 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     };
 
     // Nova função para gerenciar o clique na aba e gerar conteúdo se necessário
-    const handleInsightTabClick = async (index: number, tab: 'feynman' | 'example', concept: CoreConcept) => {
+    const handleInsightTabClick = async (index: number, tab: 'feynman' | 'example' | 'interdisciplinary', concept: CoreConcept, customDomain?: string) => {
+        // Se for interdisciplinar e não tiver domínio e não for apenas mudança de aba, espera input
+        if (tab === 'interdisciplinary' && !customDomain && !concept.tools?.interdisciplinary) {
+            setActiveInsightTab(prev => ({ ...prev, [index]: tab }));
+            return; // Aguarda o usuário digitar e confirmar
+        }
+
         setActiveInsightTab(prev => ({ ...prev, [index]: tab }));
 
         // Se já tem o conteúdo, não faz nada
         if (tab === 'feynman' && concept.tools?.feynman) return;
         if (tab === 'example' && concept.tools?.example) return;
+        // Para interdisciplinar, sempre regenera se vier um customDomain novo, ou usa cache se não vier
+        if (tab === 'interdisciplinary' && !customDomain && concept.tools?.interdisciplinary) return;
 
         // Se não tem, gera
         setInsightLoading(index);
         try {
-            const toolType = tab === 'feynman' ? 'explainLikeIm5' : 'realWorldApplication';
-            const content = await generateTool(toolType, concept.concept, concept.definition);
+            let toolType: 'explainLikeIm5' | 'realWorldApplication' | 'interdisciplinary';
+            if (tab === 'feynman') toolType = 'explainLikeIm5';
+            else if (tab === 'example') toolType = 'realWorldApplication';
+            else toolType = 'interdisciplinary';
+
+            const content = await generateTool(toolType, concept.concept, concept.definition, customDomain);
 
             const newConcepts = [...(guide.coreConcepts || [])];
             if (!newConcepts[index].tools) newConcepts[index].tools = {};
 
             if (tab === 'feynman') newConcepts[index].tools!.feynman = content;
-            else newConcepts[index].tools!.example = content;
+            else if (tab === 'example') newConcepts[index].tools!.example = content;
+            else newConcepts[index].tools!.interdisciplinary = content;
 
             onUpdateGuide({ ...guide, coreConcepts: newConcepts });
         } catch (error) {
@@ -80,9 +96,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     const handleGenerateCheckpointDiagram = async (checkpointId: string, description: string) => {
         setLoadingDiagramForCheckpoint(checkpointId);
         try {
-            const url = await generateDiagram(description);
+            const { code, url } = await generateDiagram(description);
             const newCheckpoints = guide.checkpoints?.map(c =>
-                c.id === checkpointId ? { ...c, imageUrl: url } : c
+                c.id === checkpointId ? { ...c, imageUrl: url, diagramCode: code } : c
             );
             onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
         } catch (error) {
@@ -92,10 +108,25 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         }
     };
 
+    const handleUpdateDiagram = (checkpointId: string, newCode: string, newUrl: string) => {
+        const newCheckpoints = guide.checkpoints?.map(c =>
+            c.id === checkpointId ? { ...c, imageUrl: newUrl, diagramCode: newCode } : c
+        );
+        onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
+    };
+
     const toggleCheckpoint = (id: string) => {
         const newCheckpoints = guide.checkpoints?.map(c =>
             c.id === id ? { ...c, completed: !c.completed } : c
         );
+
+        // Se marcou como completo, aciona celebração
+        const isNowCompleted = newCheckpoints?.find(c => c.id === id)?.completed;
+        if (isNowCompleted) {
+            setIsCelebrating(true);
+            setTimeout(() => setIsCelebrating(false), 3000);
+        }
+
         onUpdateGuide({ ...guide, checkpoints: newCheckpoints });
     };
 
@@ -218,20 +249,70 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                                 {/* ÁREA EXPANDIDA (Igual ao original) */}
                                 {expandedConcepts.has(idx) && (
                                     <div className="mt-6 pl-0 md:pl-[3.5rem] animate-in fade-in slide-in-from-top-2">
-                                        <div className="flex gap-2 mb-4 border-b border-gray-100 pb-2">
-                                            <button onClick={() => handleInsightTabClick(idx, 'feynman', concept)} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeInsightTab[idx] === 'feynman' ? 'bg-green-50 text-green-700 shadow-sm ring-1 ring-green-200' : 'text-gray-400 hover:bg-gray-50'}`}><Smile className="w-4 h-4" /> Método Feynman</button>
-                                            <button onClick={() => handleInsightTabClick(idx, 'example', concept)} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeInsightTab[idx] === 'example' ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200' : 'text-gray-400 hover:bg-gray-50'}`}><Target className="w-4 h-4" /> Aplicação Real</button>
+
+                                        <div className="flex gap-2 mb-4 border-b border-gray-100 pb-2 overflow-x-auto">
+                                            <button onClick={() => handleInsightTabClick(idx, 'feynman', concept)} className={`shrink-0 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${activeInsightTab[idx] === 'feynman' ? 'bg-green-50 text-green-700 shadow-sm ring-1 ring-green-200' : 'text-gray-400 hover:bg-gray-50'}`}><Smile className="w-4 h-4" /> Feynman</button>
+                                            <button onClick={() => handleInsightTabClick(idx, 'example', concept)} className={`shrink-0 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${activeInsightTab[idx] === 'example' ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200' : 'text-gray-400 hover:bg-gray-50'}`}><Target className="w-4 h-4" /> Aplicação</button>
+                                            <button onClick={() => handleInsightTabClick(idx, 'interdisciplinary', concept)} className={`shrink-0 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${activeInsightTab[idx] === 'interdisciplinary' ? 'bg-purple-50 text-purple-700 shadow-sm ring-1 ring-purple-200' : 'text-gray-400 hover:bg-gray-50'}`}><Layers className="w-4 h-4" /> Conexão</button>
                                         </div>
-                                        {insightLoading === idx && <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center gap-2 text-gray-500 animate-pulse"><RefreshCw className="w-5 h-5 animate-spin" /> Gerando Insight Curto...</div>}
+
+                                        {/* Input para Conexão Interdisciplinar */}
+                                        {activeInsightTab[idx] === 'interdisciplinary' && (
+                                            <div className="mb-4 animate-in slide-in-from-top-2 p-3 bg-purple-50 rounded-xl border border-purple-100">
+                                                <p className="text-[10px] uppercase font-bold text-purple-600 mb-2">Com o que conectar?</p>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Ex: Cinema, Biologia, História..."
+                                                        className="flex-1 text-sm p-2 rounded-lg border-purple-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                                                        value={interdisciplinaryInput[idx] || ''}
+                                                        onChange={(e) => setInterdisciplinaryInput(prev => ({ ...prev, [idx]: e.target.value }))}
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleInsightTabClick(idx, 'interdisciplinary', concept, interdisciplinaryInput[idx])}
+                                                    />
+                                                    <button
+                                                        onClick={() => handleInsightTabClick(idx, 'interdisciplinary', concept, interdisciplinaryInput[idx])}
+                                                        className="px-4 bg-purple-600 text-white rounded-lg font-bold text-sm shadow-sm hover:bg-purple-700"
+                                                    >
+                                                        Gerar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {insightLoading === idx && <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center gap-2 text-gray-500 animate-pulse"><RefreshCw className="w-5 h-5 animate-spin" /> Processando Inteligência...</div>}
                                         {insightLoading !== idx && (
                                             <>
                                                 {activeInsightTab[idx] === 'feynman' && concept.tools?.feynman && <div className="bg-green-50 p-6 rounded-2xl border border-green-100 relative overflow-hidden animate-in fade-in"><div className="absolute top-0 right-0 p-2 opacity-10"><Smile className="w-16 h-16 text-green-600" /></div><div className="text-green-900 leading-relaxed text-sm relative z-10 prose prose-sm max-w-none"><ReactMarkdown>{concept.tools?.feynman}</ReactMarkdown></div></div>}
                                                 {activeInsightTab[idx] === 'example' && concept.tools?.example && <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 relative overflow-hidden animate-in fade-in"><div className="absolute top-0 right-0 p-2 opacity-10"><Target className="w-16 h-16 text-blue-600" /></div><div className="text-blue-900 leading-relaxed text-sm relative z-10 prose prose-sm max-w-none"><ReactMarkdown>{concept.tools.example}</ReactMarkdown></div></div>}
-                                                {!activeInsightTab[idx] && <div className="p-4 text-center text-xs text-gray-400 italic">Selecione uma ferramenta acima para gerar o insight.</div>}
+                                                {activeInsightTab[idx] === 'interdisciplinary' && concept.tools?.interdisciplinary && <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100 relative overflow-hidden animate-in fade-in"><div className="absolute top-0 right-0 p-2 opacity-10"><Layers className="w-16 h-16 text-purple-600" /></div><div className="text-purple-900 leading-relaxed text-sm relative z-10 prose prose-sm max-w-none"><ReactMarkdown>{concept.tools.interdisciplinary}</ReactMarkdown></div></div>}
+                                                {!activeInsightTab[idx] && <div className="p-4 text-center text-xs text-gray-400 italic">Selecione uma ferramenta acima para desbloquear inteligência.</div>}
                                             </>
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* SEÇÃO 1.5: CONCEITOS DE SUPORTE (O Contexto 80%) */}
+            {(!isParetoOnly || isBook) && guide.supportConcepts && guide.supportConcepts.length > 0 && (
+                <section className="space-y-4 animate-in slide-in-from-bottom-6 duration-700">
+                    <div className="flex items-center gap-2 px-2">
+                        <Lightbulb className="w-5 h-5 text-amber-500" />
+                        <h2 className="text-lg font-bold text-gray-700">
+                            Conceitos de Suporte (Contexto)
+                        </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {guide.supportConcepts.map((concept, idx) => (
+                            <div key={idx} className="bg-amber-50/50 p-4 rounded-xl border border-amber-100/50 hover:bg-amber-50 transition-colors">
+                                <h3 className="font-bold text-gray-800 mb-1 text-sm flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                                    {concept.concept}
+                                </h3>
+                                <p className="text-xs text-gray-600 leading-relaxed">{concept.definition}</p>
                             </div>
                         ))}
                     </div>
@@ -321,10 +402,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                                     </div>
                                 </div>
                                 <div className="w-full md:w-1/3 flex flex-col justify-center items-center border-l border-gray-100 pl-0 md:pl-6 pt-4 md:pt-0">
-                                    {checkpoint.imageUrl ? (
+                                    {checkpoint.diagramCode ? (
+                                        <MermaidEditor
+                                            initialCode={checkpoint.diagramCode}
+                                            onUpdate={(code, url) => handleUpdateDiagram(checkpoint.id, code, url)}
+                                        />
+                                    ) : checkpoint.imageUrl ? (
                                         <div className="relative w-full group">
-                                            <img src={checkpoint.imageUrl} alt="Diagrama" className="w-full rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:scale-105 transition-transform bg-white" onClick={() => window.open(checkpoint.imageUrl, '_blank')} />
-                                            <p className="text-center text-[10px] text-gray-400 mt-2">Diagrama gerado por IA</p>
+                                            <img src={checkpoint.imageUrl} alt="Diagrama" className="w-full rounded-lg shadow-sm border border-gray-200" />
+                                            <div className="absolute inset-x-0 bottom-0 p-2 bg-white/90 backdrop-blur text-center">
+                                                <button onClick={() => handleGenerateCheckpointDiagram(checkpoint.id, checkpoint.drawExactly)} disabled={loadingDiagramForCheckpoint === checkpoint.id} className="text-xs text-orange-600 font-bold flex items-center justify-center gap-2 w-full hover:underline">
+                                                    {loadingDiagramForCheckpoint === checkpoint.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Regerar para Editar
+                                                </button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="text-center w-full bg-gray-50 p-6 rounded-xl border border-dashed border-gray-200">
@@ -362,7 +452,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
             {/* GAMIFIED PROGRESS HUD (Barra Fixa Inferior) */}
             {(!isParetoOnly || isBook) && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 transition-transform duration-500 animate-in slide-in-from-bottom-20">
+                <div className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 transition-all duration-500 animate-in slide-in-from-bottom-20 ${isCelebrating ? 'translate-y-[-10px] scale-105 border-green-400 bg-green-50/95' : ''}`}>
                     <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
 
                         {/* Seção da Barra de Progresso */}
@@ -402,9 +492,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                                     </div>
                                     <div>
                                         <p className="text-xs text-indigo-500 font-bold uppercase mb-0.5">Próximo Passo:</p>
-                                        <p className="text-sm font-medium text-indigo-900 leading-tight line-clamp-1">
-                                            {nextTitle ? `Bora! Falta pouco. Descubra sobre "${nextTitle}"` : "Continue avançando!"}
-                                        </p>
+                                        <div className="overflow-hidden relative w-full group">
+                                            <p className={`text-sm font-medium text-indigo-900 leading-tight whitespace-nowrap hover:animate-none group-hover:whitespace-normal group-hover:line-clamp-none ${nextTitle && nextTitle.length > 40 ? 'animate-[marquee_10s_linear_infinite]' : ''}`}>
+                                                {nextTitle ? `Bora! Falta pouco. Descubra sobre "${nextTitle}"` : "Continue avançando!"}
+                                            </p>
+                                        </div>
                                         <p className="text-[10px] text-indigo-400 mt-0.5 hidden sm:block">
                                             Vai ser interessante conectar os pontos!
                                         </p>

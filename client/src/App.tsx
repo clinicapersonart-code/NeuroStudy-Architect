@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { InputType, ProcessingState, StudyGuide, StudySession, Folder, StudySource, StudyMode } from './types';
-import { generateStudyGuide, generateSlides, generateQuiz, generateFlashcards } from './services/geminiService';
+import { InputType, ProcessingState, StudyGuide, StudySession, Folder, StudySource, StudyMode, SlideContent } from './types';
+import { generateStudyGuide, generateSlides, generateQuiz, generateFlashcards, uploadFileToGemini, transcribeMedia } from './services/geminiService';
 import { loadUserData, saveUserData, isCloudMode } from './services/storage';
 import { ResultsView } from './components/ResultsView';
 import { SlidesView } from './components/SlidesView';
@@ -19,7 +19,7 @@ import { ReviewSchedulerModal } from './components/ReviewSchedulerModal';
 import { NotificationCenter } from './components/NotificationCenter';
 import { SourcePreviewModal } from './components/SourcePreviewModal';
 import { SearchResourcesModal } from './components/SearchResourcesModal';
-import { NeuroLogo, UploadCloud, FileText, Search, BookOpen, Monitor, Plus, Trash, Link, Rocket, BatteryCharging, Activity, Globe, Edit, CheckCircle, Layers, Target, Menu, Bell, Calendar, GenerateIcon, Eye, Settings, Play, X, Lock, ChevronRight, Zap } from './components/Icons';
+import { NeuroLogo, UploadCloud, FileText, Search, BookOpen, Monitor, Plus, Trash, Link, Rocket, BatteryCharging, Activity, Globe, Edit, CheckCircle, Layers, Target, Menu, Bell, Calendar, GenerateIcon, Eye, Settings, Play, X, Lock, ChevronRight, Zap, HelpCircle } from './components/Icons';
 
 export function App() {
     const [isAuthorized, setIsAuthorized] = useState(false);
@@ -154,7 +154,6 @@ export function App() {
     const updateStudyGuide = (studyId: string, newGuide: StudyGuide) => { setStudies(prev => prev.map(s => s.id === studyId ? { ...s, guide: newGuide } : s)); };
     const updateStudyMode = (studyId: string, mode: StudyMode) => { setStudies(prev => prev.map(s => s.id === studyId ? { ...s, mode: mode } : s)); };
     const handleSaveTitle = () => { if (activeStudyId && editTitleInput.trim()) { setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, title: editTitleInput } : s)); } setIsEditingTitle(false); };
-
     const addSourceToStudy = async () => {
         if (!activeStudyId) return;
         let content = ''; let mimeType = ''; let name = ''; let finalType = inputType;
@@ -166,10 +165,34 @@ export function App() {
             else name = `Nota de Texto ${new Date().toLocaleTimeString()}`;
         } else {
             if (!selectedFile) return;
-            content = await fileToBase64(selectedFile); mimeType = selectedFile.type; name = selectedFile.name;
-            if (inputType === InputType.PDF) {
-                if (name.toLowerCase().endsWith('.epub')) finalType = InputType.EPUB;
-                else if (name.toLowerCase().endsWith('.mobi')) finalType = InputType.MOBI;
+
+            // Lógica de Transcrição Automática para Vídeo/Áudio
+            if (inputType === InputType.VIDEO) {
+                setProcessingState({ isLoading: true, error: null, step: 'transcribing' });
+                try {
+                    const base64 = await fileToBase64(selectedFile);
+                    // 1. Upload para Gemini (para gerar URI)
+                    const fileUri = await uploadFileToGemini(base64, selectedFile.type);
+                    // 2. Transcrever
+                    const transcript = await transcribeMedia(fileUri, selectedFile.type);
+
+                    // 3. Salvar como Fonte de TEXTO
+                    content = transcript;
+                    mimeType = 'text/plain';
+                    name = `[Transcrição] ${selectedFile.name}`;
+                    finalType = InputType.TEXT; // Muda para Texto pois agora é uma transcrição
+
+                    setProcessingState({ isLoading: false, error: null, step: 'idle' });
+                } catch (err: any) {
+                    setProcessingState({ isLoading: false, error: "Erro na transcrição: " + err.message, step: 'idle' });
+                    return;
+                }
+            } else {
+                content = await fileToBase64(selectedFile); mimeType = selectedFile.type; name = selectedFile.name;
+                if (inputType === InputType.PDF) {
+                    if (name.toLowerCase().endsWith('.epub')) finalType = InputType.EPUB;
+                    else if (name.toLowerCase().endsWith('.mobi')) finalType = InputType.MOBI;
+                }
             }
         }
         const newSource: StudySource = { id: Date.now().toString(), type: finalType, name, content, mimeType, dateAdded: Date.now() };
@@ -558,9 +581,9 @@ export function App() {
                                         <button onClick={() => setActiveTab('guide')} disabled={!activeStudy.guide} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'guide' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}><FileText className="w-4 h-4" /> Roteiro</button>
                                         {!isParetoStudy && (
                                             <>
-                                                <button onClick={() => setActiveTab('slides')} disabled={!activeStudy.slides} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'slides' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}><Monitor className="w-4 h-4" /> Slides</button>
-                                                <button onClick={() => setActiveTab('quiz')} disabled={!activeStudy.quiz && !isGuideComplete} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'quiz' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>{isGuideComplete || activeStudy.quiz ? <CheckCircle className="w-4 h-4" /> : <Lock className="w-4 h-4" />} Quiz</button>
-                                                <button onClick={() => setActiveTab('flashcards')} disabled={!activeStudy.flashcards && !isGuideComplete} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'flashcards' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>{isGuideComplete || activeStudy.flashcards ? <Layers className="w-4 h-4" /> : <Lock className="w-4 h-4" />} Flashcards</button>
+                                                <button onClick={() => setActiveTab('slides')} disabled={!activeStudy.guide} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'slides' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}><Monitor className="w-4 h-4" /> Slides</button>
+                                                <button onClick={() => setActiveTab('quiz')} disabled={!activeStudy.guide} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'quiz' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>{activeStudy.quiz ? <CheckCircle className="w-4 h-4" /> : <Lock className="w-4 h-4" />} Quiz</button>
+                                                <button onClick={() => setActiveTab('flashcards')} disabled={!activeStudy.guide} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'flashcards' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}>{activeStudy.flashcards ? <Layers className="w-4 h-4" /> : <Lock className="w-4 h-4" />} Flashcards</button>
                                                 {/* NOVAS ABAS */}
                                                 <button onClick={() => setActiveTab('map')} disabled={!activeStudy.guide} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'map' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}><Zap className="w-4 h-4" /> Mapa Mental</button>
                                                 <button onClick={() => setActiveTab('connections')} disabled={!activeStudy.guide} className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'connections' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100' : 'text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50'}`}><Globe className="w-4 h-4" /> Conexões</button>
@@ -584,6 +607,12 @@ export function App() {
                                                             <button onClick={() => setInputType(InputType.DOI)} className={`flex-1 min-w-[80px] px-3 py-2 rounded-lg text-sm font-bold transition-all ${inputType === InputType.DOI ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>DOI/Artigo</button>
                                                             <button onClick={() => setShowSearchModal(true)} className={`flex-1 min-w-[120px] px-3 py-2 rounded-lg text-sm font-bold transition-all bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm flex items-center justify-center gap-2`}><Globe className="w-4 h-4" /> Pesquisar Web</button>
                                                         </div>
+                                                        {inputType === InputType.URL && (
+                                                            <div className="mb-4 bg-blue-50 text-blue-800 p-3 rounded-lg text-xs flex items-start gap-2 border border-blue-100">
+                                                                <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                                                <p><strong>Dica para YouTube:</strong> Para melhores resultados e timestamps precisos, recomendamos colar a <strong>Transcrição Completa</strong> (Texto) ou usar ferramentas externas para baixar o áudio/vídeo e fazer upload do arquivo aqui. A IA analisa melhor o texto direto.</p>
+                                                            </div>
+                                                        )}
                                                         <div className="space-y-4">
                                                             {inputType === InputType.TEXT || inputType === InputType.DOI || inputType === InputType.URL ? (
                                                                 <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none font-sans text-sm" placeholder={inputType === InputType.URL ? "Cole o link aqui..." : inputType === InputType.DOI ? "Ex: 10.1038/s41586-020-2649-2" : "Cole suas anotações ou texto aqui..."} />
@@ -680,9 +709,9 @@ export function App() {
                                             />
                                         )}
 
-                                        {activeTab === 'slides' && !processingState.isLoading && (<div className="space-y-6">{activeStudy.slides ? (<SlidesView slides={activeStudy.slides} />) : (<div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed"><Monitor className="w-16 h-16 text-gray-300 mx-auto mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Slides de Aula</h3><p className="text-gray-500 mb-6 max-w-md mx-auto">Transforme o roteiro em uma apresentação estruturada.</p><button onClick={handleGenerateSlides} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors">Gerar Slides com IA</button></div>)}</div>)}
-                                        {activeTab === 'quiz' && !processingState.isLoading && (<div className="space-y-6">{activeStudy.quiz ? (<QuizView questions={activeStudy.quiz} onGenerate={handleGenerateQuiz} onClear={handleClearQuiz} />) : (<div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed"><CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Quiz de Recuperação Ativa</h3><p className="text-gray-500 mb-6 max-w-md mx-auto">Teste seu conhecimento para fortalecer as conexões neurais.</p>{isGuideComplete ? (<button onClick={() => handleGenerateQuiz()} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors">Gerar Quiz</button>) : (<div className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold border border-yellow-200"><Lock className="w-4 h-4" /> Complete todos os checkpoints para liberar</div>)}</div>)}</div>)}
-                                        {activeTab === 'flashcards' && !processingState.isLoading && (<div className="space-y-6">{activeStudy.flashcards ? (<FlashcardsView cards={activeStudy.flashcards} onGenerate={handleGenerateFlashcards} />) : (<div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed"><Layers className="w-16 h-16 text-gray-300 mx-auto mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Flashcards</h3><p className="text-gray-500 mb-6 max-w-md mx-auto">Pratique a recuperação ativa com cartões.</p>{isGuideComplete ? (<button onClick={handleGenerateFlashcards} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors">Gerar Flashcards</button>) : (<div className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold border border-yellow-200"><Lock className="w-4 h-4" /> Complete todos os checkpoints para liberar</div>)}</div>)}</div>)}
+                                        {activeTab === 'slides' && !processingState.isLoading && (<div className="space-y-6">{activeStudy.slides ? (<SlidesView slides={activeStudy.slides} onUpdateSlides={(newSlides) => setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, slides: newSlides } : s))} />) : (<div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed"><Monitor className="w-16 h-16 text-gray-300 mx-auto mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Slides de Aula</h3><p className="text-gray-500 mb-6 max-w-md mx-auto">Transforme o roteiro em uma apresentação estruturada.</p><button onClick={handleGenerateSlides} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors">Gerar Slides com IA</button></div>)}</div>)}
+                                        {activeTab === 'quiz' && !processingState.isLoading && (<div className="space-y-6">{(activeStudy.quiz || activeStudy.guide) ? (<QuizView questions={activeStudy.quiz || []} onGenerate={handleGenerateQuiz} onClear={handleClearQuiz} />) : (<div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed"><CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Quiz de Recuperação Ativa</h3><p className="text-gray-500 mb-6 max-w-md mx-auto">Teste seu conhecimento para fortalecer as conexões neurais.</p><div className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold border border-yellow-200"><Lock className="w-4 h-4" /> Gere o Roteiro primeiro</div></div>)}</div>)}
+                                        {activeTab === 'flashcards' && !processingState.isLoading && (<div className="space-y-6">{(activeStudy.flashcards || activeStudy.guide) ? (<FlashcardsView cards={activeStudy.flashcards || []} onGenerate={handleGenerateFlashcards} />) : (<div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed"><Layers className="w-16 h-16 text-gray-300 mx-auto mb-4" /><h3 className="text-xl font-bold text-gray-700 mb-2">Flashcards</h3><p className="text-gray-500 mb-6 max-w-md mx-auto">Pratique a recuperação ativa com cartões.</p><div className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold border border-yellow-200"><Lock className="w-4 h-4" /> Gere o Roteiro primeiro</div></div>)}</div>)}
 
                                         {/* NOVAS VIEWS MAP E CONNECTIONS */}
                                         {activeTab === 'map' && !processingState.isLoading && activeStudy.guide && (
