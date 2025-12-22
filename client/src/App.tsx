@@ -19,7 +19,7 @@ import { ReviewSchedulerModal } from './components/ReviewSchedulerModal';
 import { NotificationCenter } from './components/NotificationCenter';
 import { SourcePreviewModal } from './components/SourcePreviewModal';
 import { SearchResourcesModal } from './components/SearchResourcesModal';
-import { NeuroLogo, UploadCloud, FileText, Search, BookOpen, Monitor, Plus, Trash, Link, Rocket, BatteryCharging, Activity, Globe, Edit, CheckCircle, Layers, Target, Menu, Bell, Calendar, GenerateIcon, Eye, Settings, Play, X, Lock, ChevronRight, Zap, HelpCircle } from './components/Icons';
+import { NeuroLogo, UploadCloud, FileText, Search, BookOpen, Monitor, Plus, Trash, Link, Rocket, BatteryCharging, Activity, Globe, Edit, CheckCircle, Layers, Target, Menu, Bell, Calendar, GenerateIcon, Eye, Settings, Play, X, Lock, ChevronRight, Zap, HelpCircle, Sparkles } from './components/Icons';
 
 export function App() {
     const [isAuthorized, setIsAuthorized] = useState(false);
@@ -195,9 +195,23 @@ export function App() {
                 }
             }
         }
-        const newSource: StudySource = { id: Date.now().toString(), type: finalType, name, content, mimeType, dateAdded: Date.now() };
+        const isFirstSource = (!activeStudy?.sources || activeStudy.sources.length === 0);
+        const newSource: StudySource = { id: Date.now().toString(), type: finalType, name, content, mimeType, dateAdded: Date.now(), isPrimary: isFirstSource };
         setStudies(prev => prev.map(s => { if (s.id === activeStudyId) return { ...s, sources: [...s.sources, newSource] }; return s; }));
         setInputText(''); setSelectedFile(null);
+    };
+
+    const handleSetPrimarySource = (sourceId: string) => {
+        if (!activeStudyId) return;
+        setStudies(prev => prev.map(s => {
+            if (s.id === activeStudyId) {
+                return {
+                    ...s,
+                    sources: s.sources.map(src => ({ ...src, isPrimary: src.id === sourceId }))
+                };
+            }
+            return s;
+        }));
     };
 
     const handleAddSearchSource = (name: string, content: string, type: InputType) => {
@@ -229,11 +243,11 @@ export function App() {
         if (content instanceof File) { sourceContent = await fileToBase64(content); mimeType = content.type; name = content.name; }
         else { sourceContent = content; if (type === InputType.DOI) name = 'DOI Link'; else if (type === InputType.URL) name = 'Website Link'; else name = 'Texto Colado'; }
 
-        const newSource: StudySource = { id: Date.now().toString(), type, name, content: sourceContent, mimeType, dateAdded: Date.now() };
+        const newSource: StudySource = { id: Date.now().toString(), type, name, content: sourceContent, mimeType, dateAdded: Date.now(), isPrimary: true };
         setStudies(prev => prev.map(s => { if (s.id === newStudy.id) return { ...s, sources: [newSource] }; return s; }));
 
         setQuickInputMode('none'); setInputText(''); setView('app');
-        if (autoGenerate) { setTimeout(() => handleGenerateGuideForStudy(newStudy.id, newSource, mode, isBook), 100); }
+        if (autoGenerate) { setTimeout(() => handleGenerateGuideForStudy(newStudy.id, [newSource], mode, isBook), 100); }
     };
 
     const handleParetoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,14 +275,21 @@ export function App() {
 
     const fileToBase64 = (file: File): Promise<string> => { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => { const result = reader.result as string; const base64 = result.split(',')[1]; resolve(base64); }; reader.onerror = (error) => reject(error); }); };
 
-    const handleGenerateGuideForStudy = async (studyId: string, source: StudySource, mode: StudyMode, isBook: boolean) => {
-        const isBinary = source.type === InputType.PDF || source.type === InputType.VIDEO || source.type === InputType.IMAGE || source.type === InputType.EPUB || source.type === InputType.MOBI;
-        const isVideo = source.type === InputType.VIDEO;
+    const handleGenerateGuideForStudy = async (studyId: string, sources: StudySource[], mode: StudyMode, isBook: boolean) => {
+        // Encontra a fonte primária para definir o passo inicial (transcribing vs analyzing)
+        const primarySource = sources.find(s => s.isPrimary) || sources[0];
+        const isVideo = primarySource?.type === InputType.VIDEO;
+        const isBinary = sources.some(s => s.type === InputType.PDF || s.type === InputType.EPUB || s.type === InputType.MOBI); // Simplificação
+
         setProcessingState({ isLoading: true, error: null, step: isVideo ? 'transcribing' : 'analyzing' });
         try {
             const progressTimer = setTimeout(() => { setProcessingState(prev => ({ ...prev, step: 'generating' })); }, 3500);
-            const guide = await generateStudyGuide(source.content, source.mimeType || 'text/plain', mode, isBinary, isBook);
+
+            // ATENÇÃO: Agora passamos o ARRAY de fontes para o geminiService
+            const guide = await generateStudyGuide(sources, mode, isBinary, isBook);
+
             clearTimeout(progressTimer);
+            setStudies(prev => prev.map(s => s.id === studyId ? { ...s, guide } : s));
             setStudies(prev => prev.map(s => s.id === studyId ? { ...s, guide } : s));
             setProcessingState({ isLoading: false, error: null, step: 'idle' });
             setActiveTab('guide');
@@ -279,8 +300,8 @@ export function App() {
 
     const handleGenerateGuide = async () => {
         if (!activeStudy || activeStudy.sources.length === 0) return;
-        const source = activeStudy.sources[activeStudy.sources.length - 1];
-        handleGenerateGuideForStudy(activeStudy.id, source, activeStudy.mode, activeStudy.isBook || false);
+        // Agora passa TODAS as fontes. O serviço decide quem é primaria.
+        handleGenerateGuideForStudy(activeStudy.id, activeStudy.sources, activeStudy.mode, activeStudy.isBook || false);
     };
 
     const handleGenerateSlides = async () => { if (!activeStudy?.guide) return; setProcessingState({ isLoading: true, error: null, step: 'slides' }); try { const slides = await generateSlides(activeStudy.guide); setStudies(prev => prev.map(s => s.id === activeStudyId ? { ...s, slides } : s)); } catch (err: any) { setProcessingState(prev => ({ ...prev, error: err.message })); } finally { setProcessingState(prev => ({ ...prev, isLoading: false, step: 'idle' })); } };
@@ -652,7 +673,15 @@ export function App() {
                                                                                 {!isParetoStudy && <button onClick={() => handleStartRenamingSource(source)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-indigo-600 transition-opacity" title="Renomear Fonte"><Edit className="w-3 h-3" /></button>}
                                                                             </div>
                                                                         )}
-                                                                        <div className="flex items-center gap-2 mt-1"><span className="text-xs text-gray-500 uppercase tracking-wider font-bold">{source.type} • {new Date(source.dateAdded).toLocaleTimeString()}</span><button onClick={() => setPreviewSource(source)} className="flex items-center gap-1 text-[10px] text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded transition-colors"><Eye className="w-3 h-3" /> Visualizar</button></div>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <button onClick={() => handleSetPrimarySource(source.id)} className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors flex items-center gap-1 border ${source.isPrimary ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'}`}>
+                                                                                <Sparkles className={`w-3 h-3 ${source.isPrimary ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'}`} />
+                                                                                {source.isPrimary ? 'Fonte Principal' : 'Complementar'}
+                                                                            </button>
+                                                                            <span className="text-xs text-gray-300">|</span>
+                                                                            <span className="text-xs text-gray-500 uppercase tracking-wider font-bold">{source.type} • {new Date(source.dateAdded).toLocaleTimeString()}</span>
+                                                                            <button onClick={() => setPreviewSource(source)} className="flex items-center gap-1 text-[10px] text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded transition-colors"><Eye className="w-3 h-3" /> Ver</button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 {/* Esconde lixeira em Pareto */}

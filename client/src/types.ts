@@ -102,6 +102,7 @@ export interface StudySource {
   content: string;
   mimeType?: string;
   dateAdded: number;
+  isPrimary?: boolean;
 }
 
 export interface ProcessingState {

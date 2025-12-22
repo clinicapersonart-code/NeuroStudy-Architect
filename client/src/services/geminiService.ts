@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { StudyGuide, ChatMessage, SlideContent as Slide, QuizQuestion, Flashcard, StudyMode } from "../types";
+import { StudyGuide, ChatMessage, SlideContent as Slide, QuizQuestion, Flashcard, StudyMode, StudySource } from "../types";
 
 const getApiKey = (): string | undefined => {
   return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
@@ -144,12 +144,52 @@ export const transcribeMedia = async (fileUri: string, mimeType: string): Promis
   }
 };
 
-export const generateStudyGuide = async (content: string, mimeType: string, mode: StudyMode = StudyMode.NORMAL, isBinary: boolean = false, isBook: boolean = false): Promise<StudyGuide> => {
+export const generateStudyGuide = async (sources: StudySource[], mode: StudyMode = StudyMode.NORMAL, isBinary: boolean = false, isBook: boolean = false): Promise<StudyGuide> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("Chave de API não encontrada.");
   const ai = new GoogleGenAI({ apiKey });
   const schemaProperties = isBook ? { ...COMMON_PROPERTIES, ...CHAPTERS_PROPERTY } : { ...COMMON_PROPERTIES };
   const finalSchema: Schema = { type: Type.OBJECT, properties: schemaProperties, required: ["subject", "overview", "coreConcepts", "checkpoints"] };
+
+  // 1. Identificar Fonte Principal e Complementares
+  const primarySource = sources.find(s => s.isPrimary) || sources[0];
+  const complementarySources = sources.filter(s => s.id !== primarySource.id);
+
+  console.log(`[GeminiService] Gerando guia com Principal: ${primarySource.name} (${primarySource.type}) e ${complementarySources.length} complementares.`);
+
+  // 2. Construir Conteúdo do Prompt (Texto Combinado com Referências)
+  const MAX_CHARS_PER_COMPLEMENT = 50000; // Limite de segurança
+  let combinedContext = `FONTE PRINCIPAL (Use esta estrutura como base):\n`;
+  combinedContext += `[ID: PRIMARY, NOME: ${primarySource.name}, TIPO: ${primarySource.type}]\n`;
+  combinedContext += `${primarySource.content.slice(0, 100000)}\n\n`; // Limite maior para principal
+
+  if (complementarySources.length > 0) {
+    combinedContext += `FONTES COMPLEMENTARES (Use apenas para enriquecer/aprofundar):\n`;
+    complementarySources.forEach((src, idx) => {
+      combinedContext += `[ID: REF_${idx + 1}, NOME: ${src.name}]\n${src.content.slice(0, MAX_CHARS_PER_COMPLEMENT)}...\n\n`;
+    });
+  }
+
+  // 3. Definir Estrutura baseada no Tipo da Fonte Principal
+  let structureInstruction = "";
+  // Se for Video ou tiver transcrição no nome, é cronológico.
+  if (primarySource.type === 'VIDEO' || primarySource.name.includes("[Transcrição]")) {
+    structureInstruction = `
+    ESTRUTURA OBRIGATÓRIA (Baseada em VÍDEO/AULA):
+    - O esqueleto do roteiro (Checkpoints) DEVE seguir a cronologia da Fonte Principal.
+    - Use Timestamps [MM:SS] baseados na Fonte Principal.
+    - Se uma informação vier de uma Fonte Complementar, insira no momento lógico correspondente da aula, citando a fonte (ex: "Conforme Apostila X").
+    `;
+  } else {
+    structureInstruction = `
+    ESTRUTURA OBRIGATÓRIA (Baseada em TEXTO/LIVRO):
+    - O esqueleto do roteiro DEVE seguir os Tópicos/Capítulos da Fonte Principal.
+    - NÃO invente timestamps se não estiverem explícitos.
+    - Use "Seções" ou "Títulos" como marcadores de progresso.
+    - Integre o conteúdo das Fontes Complementares dentro dos tópicos da Fonte Principal.
+    `;
+  }
+
   let modeInstructions = "";
   if (isBook) {
     switch (mode) {
@@ -169,6 +209,8 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
   Você é o NeuroStudy Architect. 
   CONTEXTO: (${isBook ? 'LIVRO COMPLETO' : 'Material de Estudo'}). 
   MISSÃO: Analisar e criar um guia prático baseado em Neurociência.
+
+  ${structureInstruction}
 
   ${isBook ? `
   📚 MODO LIVRO vs NEUROSTUDY (ESTRUTURA AVANÇADA):
@@ -231,6 +273,10 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
   - Use TEXTO DIRETO e PRÁTICO. Seja o mais breve possível (aprox. 2 a 5 linhas), sem perder informações cruciais.
   - Sem "Era uma vez" ou analogias longas aqui. Vá direto ao ponto.
   `}
+
+  REGRAS DE OURO:
+  1. HIERARQUIA: A Fonte Principal manda na ordem. As complementares mandam na profundidade.
+  2. CITAÇÕES: Sempre que usar uma info chave de uma complementar, cite a origem (ex: "Ref: Artigo Y").
   
   JSON estrito e válido.
   
@@ -242,17 +288,11 @@ export const generateStudyGuide = async (content: string, mimeType: string, mode
   `;
 
   const parts: any[] = [];
-  if (isBinary) {
-    const isVideoOrAudio = mimeType.startsWith('video/') || mimeType.startsWith('audio/');
-    if (isVideoOrAudio || content.length > 15 * 1024 * 1024) {
-      try {
-        const fileUri = await uploadFileToGemini(content, mimeType);
-        parts.push({ fileData: { mimeType: mimeType, fileUri: fileUri } });
-        if (isVideoOrAudio) parts.push({ text: "Analise esta mídia." });
-      } catch (e) { throw new Error("Falha ao processar arquivo."); }
-    } else { parts.push({ inlineData: { mimeType: mimeType, data: content } }); }
-    parts.push({ text: "Gere o roteiro." });
-  } else { parts.push({ text: content }); }
+  // Para MVP multi-fonte, vamos simplificar e enviar tudo como texto combinado.
+  // Futuramente, se mantivermos suporte a PDF Binário real + Texto, precisaremos de lógica mista.
+  // Como 'combinedContext' já tem tudo, enviamos ele.
+  parts.push({ text: combinedContext });
+
   return fetchWithRetry(async () => {
     const response = await ai.models.generateContent({ model: MODEL_NAME, contents: { role: 'user', parts: parts }, config: { systemInstruction: MASTER_PROMPT, responseMimeType: "application/json", responseSchema: finalSchema, temperature: 0.3 } });
     let text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
